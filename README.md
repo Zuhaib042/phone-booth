@@ -22,9 +22,10 @@ pnpm verify
 Current boundaries:
 
 - `apps/` — iOS and moderator clients
-- `services/` — deployable API and worker processes
+- `services/backend/` — the Fastify API and, in a later chunk, worker process
 - `packages/` — contracts, game engine, configuration, and shared fixtures
 - `infra/` — provider-neutral infrastructure definitions
 - `tests/` — cross-package integration, concurrency, load, and end-to-end tests
 
-M1.1 establishes only the workspace and verification baseline. Runtime code begins in M1.2.
+The current API exposes `GET /health/live`. Backend environment variables and
+package commands are documented in [services/backend/README.md](services/backend/README.md).

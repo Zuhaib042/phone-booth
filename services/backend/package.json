@@ -1,0 +1,16 @@
+{
+  "name": "@project-booth/backend",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Project Booth API and worker runtime",
+  "license": "UNLICENSED",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -b --pretty false",
+    "start:api": "node dist/src/main.js",
+    "test": "pnpm run build && node --test dist/test/*.test.js"
+  },
+  "dependencies": {
+    "fastify": "5.10.0"
+  }
+}

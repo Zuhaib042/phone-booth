@@ -11,7 +11,7 @@
   },
   "scripts": {
     "build": "tsc -b --pretty false",
-    "test": "node --test",
+    "test": "pnpm --filter @project-booth/backend test",
     "typecheck": "tsc -b --pretty false",
     "verify": "pnpm run typecheck && pnpm run test && pnpm run build"
   },

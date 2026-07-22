@@ -1,7 +1,7 @@
 # Project Booth — Technical Architecture
 
 **Status:** Proposed implementation baseline  
-**Version:** 0.3  
+**Version:** 0.4<br>
 **Depends on:** [MVP Product Specification](MVP_PRODUCT_SPEC.md)  
 **Primary client:** Native iOS using Swift and SwiftUI  
 **Future client:** Native Android using Kotlin and Compose
@@ -23,6 +23,7 @@ The recommended MVP stack is:
 | HTTP contract | OpenAPI 3.1 |
 | Real-time contract | Versioned JSON envelopes over secure WebSockets |
 | Backend | TypeScript on current Node.js LTS with direct Fastify; locked for the MVP |
+| Runtime packaging | Provider-neutral OCI image shared by API and worker; native iOS builds stay outside Docker |
 | Validation | JSON Schema at every external boundary |
 | Primary data | PostgreSQL |
 | Ephemeral coordination | Valkey |
@@ -135,6 +136,14 @@ NestJS becomes attractive when:
 This is not simply “Fastify performance versus NestJS.” NestJS can use Fastify as its HTTP provider through `@nestjs/platform-fastify`, so the real choice is **direct Fastify** versus **NestJS's module, decorator, and dependency-injection layer running on Fastify**. Nest also provides structured WebSocket gateways and adapters. See the official [NestJS Fastify adapter](https://docs.nestjs.com/techniques/performance), [NestJS WebSocket gateways](https://docs.nestjs.com/websockets/gateways), and [Fastify reference](https://fastify.dev/docs/latest/Reference/).
 
 The decision may be revisited only after the MVP if measured maintenance problems or team growth justify a migration. Ordinary implementation preference is not enough to mix both application frameworks in the MVP.
+
+### 3.5 Runtime packaging
+
+The backend ships as one provider-neutral OCI image with separate API and worker commands. A multi-stage build keeps compilers and development dependencies out of the runtime stage, and the runtime process uses a non-root user. The image must handle termination signals cleanly so API connections and claimed worker jobs can stop without avoidable corruption.
+
+Docker Compose is the local orchestration layer for the API, worker, PostgreSQL, and Valkey. Each service remains a separate container, durable development data uses named volumes, and readiness-sensitive dependencies use health checks. Compose is a development and verification convenience, not the production hosting decision.
+
+The native SwiftUI application is built and tested with Xcode and is never placed in the backend container. Production infrastructure must run the same backend image built in CI without requiring provider-specific application code.
 
 ## 4. Repository structure
 

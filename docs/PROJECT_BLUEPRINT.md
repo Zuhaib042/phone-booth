@@ -1,7 +1,7 @@
 # Project Booth — Milestone Blueprint
 
 **Status:** Active execution plan  
-**Version:** 0.2<br>
+**Version:** 0.3<br>
 **Framework decision:** Direct Fastify locked for the MVP  
 **Product source:** [MVP Product Specification](MVP_PRODUCT_SPEC.md)  
 **Architecture source:** [Technical Architecture](TECHNICAL_ARCHITECTURE.md)
@@ -14,9 +14,9 @@ Only one chunk is active at a time. Finishing a milestone does not authorize sta
 
 ### Current execution status
 
-- Completed: M0.1–M0.3 and M1.1
+- Completed: M0.1–M0.3 and M1.1–M1.2
 - Active: none
-- Next: M1.2 — Fastify API skeleton
+- Next: M1.3 — API container image
 - Last verified: 2026-07-22 with Node.js 24 LTS and pnpm 11
 
 ## 2. Chunk rules
@@ -50,6 +50,7 @@ Each chunk handoff reports:
 - TypeScript backend on current Node.js LTS
 - Direct Fastify application framework
 - Modular monolith with API and worker processes
+- OCI containers for backend runtime processes; native iOS builds remain outside Docker
 - PostgreSQL as the durable source of truth
 - Valkey only for ephemeral coordination
 - HTTPS for commands and WebSockets for server events
@@ -106,18 +107,19 @@ flowchart LR
 
 ## 6. M1 — Workspace and backend skeleton
 
-**Status:** In progress — M1.1 complete.
+**Status:** In progress — M1.1–M1.2 complete.
 
 | Chunk | Concise change | Verification |
 |---|---|---|
 | M1.1 — Complete | Create the pnpm workspace, root scripts, pinned Node version, TypeScript base config, and documented directory skeleton. | `pnpm verify` passes from the repository root. |
-| M1.2 | Add a Fastify API process with configuration validation, structured logging, `/health/live`, and graceful shutdown. | API unit test uses Fastify injection; process exits cleanly on a shutdown signal. |
-| M1.3 | Add a worker process using the same configuration and logging packages. | Worker starts, reports readiness, handles a no-op job, and shuts down cleanly. |
-| M1.4 | Add local PostgreSQL and Valkey development services plus environment examples. | Health script reaches both datastores without storing application state yet. |
-| M1.5 | Add formatting, linting, typechecking, unit-test, and build commands. | One root verification command runs every check successfully. |
-| M1.6 | Add a provider-neutral CI definition for install, typecheck, tests, and build. | CI performs the same root verification command as local development. |
+| M1.2 — Complete | Add a Fastify API process with configuration validation, structured logging, `/health/live`, and graceful shutdown. | API unit test uses Fastify injection; process exits cleanly on a shutdown signal. |
+| M1.3 | Package the API in a provider-neutral, multi-stage OCI image with a minimal non-root runtime and `.dockerignore`. | Image builds, serves `/health/live`, and stops cleanly on a container termination signal. |
+| M1.4 | Add a worker process using the same configuration and logging packages and the same backend image. | Worker starts through the image's worker command, reports readiness, handles a no-op job, and shuts down cleanly. |
+| M1.5 | Add local PostgreSQL and Valkey services, named development volumes, health checks, environment examples, and a Compose stack. | Compose waits for healthy dependencies; API and worker reach both datastores without storing application state yet. |
+| M1.6 | Add formatting, linting, typechecking, unit-test, and build commands. | One root verification command runs every check successfully. |
+| M1.7 | Add provider-neutral CI for verification and backend image builds. | CI runs the same root verification command as local development and builds the production image. |
 
-**Exit gate:** A new developer can clone the repository, start dependencies, run both processes, and pass every check from documented commands.
+**Exit gate:** A new developer can clone the repository, start the complete local stack with Compose, run both backend processes as containers, and pass every check from documented commands.
 
 ## 7. M2 — Contracts and domain foundations
 
@@ -296,7 +298,7 @@ Do not implement product quantities until the economy document is approved.
 | Chunk | Concise change | Verification |
 |---|---|---|
 | M14.1 | Compare hosting candidates using cost, region, WebSocket, database, recovery, and operational criteria. | Decision record selects one provider with migration risks stated. |
-| M14.2 | Add provider-neutral containers and selected-provider infrastructure configuration. | API and worker images run unchanged locally and in staging. |
+| M14.2 | Harden and publish the existing backend image, then add selected-provider infrastructure configuration. | The same tested image digest runs locally and in staging without provider-specific application code. |
 | M14.3 | Create isolated staging and production environments with managed secrets. | Environment and Apple sandbox/production credentials cannot cross. |
 | M14.4 | Add dashboards, alerts, tracing, error tracking, and administrative kill switches. | A staged incident triggers an actionable alert and documented control. |
 | M14.5 | Run WebSocket, match, transaction, moderation, and outbox load tests. | Target concurrency passes without violating phase-delay or ledger gates. |
@@ -334,16 +336,15 @@ This is post-MVP and begins only after iOS retention validates further investmen
 
 ## 22. Immediate next chunk
 
-The next implementation chunk is **M1.2 — Fastify API skeleton**.
+The next implementation chunk is **M1.3 — API container image**.
 
 It should create only:
 
-- The `services/backend` workspace package
-- A direct Fastify API entry point
-- Typed environment/configuration validation
-- Structured request logging
-- `GET /health/live`
-- Graceful shutdown behavior
-- Focused Fastify injection and shutdown tests
+- A provider-neutral, multi-stage backend `Dockerfile`
+- A repository-level `.dockerignore`
+- A minimal production runtime containing only required output and dependencies
+- A non-root runtime user
+- An API image command using the existing graceful-shutdown behavior
+- Focused build, liveness, and termination verification
 
-It must not yet add the worker process, PostgreSQL, Valkey, authentication, game endpoints, WebSockets, SwiftUI code, or game behavior. Those belong to later chunks.
+It must not yet add the worker process, Compose stack, PostgreSQL, Valkey, authentication, game endpoints, WebSockets, SwiftUI code, or game behavior. Those belong to later chunks.
