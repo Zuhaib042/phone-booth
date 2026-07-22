@@ -9,3 +9,22 @@ Planning artifacts:
 - [Milestone blueprint with concise implementation chunks](docs/PROJECT_BLUEPRINT.md)
 
 The final product name, branding, art, copy, and store metadata must be original and must not imply affiliation with *Beast Games* or any other third-party property.
+
+## Workspace
+
+The backend workspace uses Node.js 24 LTS and pnpm 11. Node 24.18.0 is pinned for version managers; the supported engine range remains within Node 24 LTS.
+
+```sh
+pnpm install
+pnpm verify
+```
+
+Current boundaries:
+
+- `apps/` — iOS and moderator clients
+- `services/` — deployable API and worker processes
+- `packages/` — contracts, game engine, configuration, and shared fixtures
+- `infra/` — provider-neutral infrastructure definitions
+- `tests/` — cross-package integration, concurrency, load, and end-to-end tests
+
+M1.1 establishes only the workspace and verification baseline. Runtime code begins in M1.2.

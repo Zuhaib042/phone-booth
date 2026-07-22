@@ -1,7 +1,7 @@
 # Project Booth — Milestone Blueprint
 
 **Status:** Active execution plan  
-**Version:** 0.1  
+**Version:** 0.2<br>
 **Framework decision:** Direct Fastify locked for the MVP  
 **Product source:** [MVP Product Specification](MVP_PRODUCT_SPEC.md)  
 **Architecture source:** [Technical Architecture](TECHNICAL_ARCHITECTURE.md)
@@ -11,6 +11,13 @@
 This blueprint converts the product and architecture into small, sequential implementation chunks. Each chunk must produce one coherent change, include its own verification, and leave the repository in a usable state.
 
 Only one chunk is active at a time. Finishing a milestone does not authorize starting the next one without reviewing its exit gate.
+
+### Current execution status
+
+- Completed: M0.1–M0.3 and M1.1
+- Active: none
+- Next: M1.2 — Fastify API skeleton
+- Last verified: 2026-07-22 with Node.js 24 LTS and pnpm 11
 
 ## 2. Chunk rules
 
@@ -99,9 +106,11 @@ flowchart LR
 
 ## 6. M1 — Workspace and backend skeleton
 
+**Status:** In progress — M1.1 complete.
+
 | Chunk | Concise change | Verification |
 |---|---|---|
-| M1.1 | Create the pnpm workspace, root scripts, pinned Node version, TypeScript base config, and documented directory skeleton. | Install, typecheck, and a placeholder test run from the repository root. |
+| M1.1 — Complete | Create the pnpm workspace, root scripts, pinned Node version, TypeScript base config, and documented directory skeleton. | `pnpm verify` passes from the repository root. |
 | M1.2 | Add a Fastify API process with configuration validation, structured logging, `/health/live`, and graceful shutdown. | API unit test uses Fastify injection; process exits cleanly on a shutdown signal. |
 | M1.3 | Add a worker process using the same configuration and logging packages. | Worker starts, reports readiness, handles a no-op job, and shuts down cleanly. |
 | M1.4 | Add local PostgreSQL and Valkey development services plus environment examples. | Health script reaches both datastores without storing application state yet. |
@@ -325,16 +334,16 @@ This is post-MVP and begins only after iOS retention validates further investmen
 
 ## 22. Immediate next chunk
 
-The next implementation chunk is **M1.1 — Workspace skeleton**.
+The next implementation chunk is **M1.2 — Fastify API skeleton**.
 
 It should create only:
 
-- Root `package.json`
-- `pnpm-workspace.yaml`
-- Pinned Node/tooling version file
-- Root TypeScript configuration
-- Empty documented `apps`, `services`, `packages`, `infra`, and `tests` boundaries
-- Root install, typecheck, test, and build scripts with placeholder packages
+- The `services/backend` workspace package
+- A direct Fastify API entry point
+- Typed environment/configuration validation
+- Structured request logging
+- `GET /health/live`
+- Graceful shutdown behavior
+- Focused Fastify injection and shutdown tests
 
-It must not yet add Fastify, PostgreSQL, Valkey, SwiftUI code, API endpoints, or game behavior. Those belong to later chunks.
-
+It must not yet add the worker process, PostgreSQL, Valkey, authentication, game endpoints, WebSockets, SwiftUI code, or game behavior. Those belong to later chunks.

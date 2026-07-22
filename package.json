@@ -1,0 +1,22 @@
+{
+  "name": "project-booth",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Project Booth workspace",
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@11.9.0",
+  "engines": {
+    "node": ">=24.14.0 <25",
+    "pnpm": ">=11.9.0 <12"
+  },
+  "scripts": {
+    "build": "tsc -b --pretty false",
+    "test": "node --test",
+    "typecheck": "tsc -b --pretty false",
+    "verify": "pnpm run typecheck && pnpm run test && pnpm run build"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3",
+    "typescript": "7.0.2"
+  }
+}
