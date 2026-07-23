@@ -7,12 +7,18 @@
   "type": "module",
   "scripts": {
     "build": "tsc -b --pretty false",
+    "health:datastores": "node dist/src/datastore-health-main.js",
     "start:api": "node dist/src/main.js",
     "start:worker": "node dist/src/worker-main.js",
     "test": "pnpm run build && node --test dist/test/*.test.js"
   },
   "dependencies": {
     "fastify": "5.10.0",
+    "iovalkey": "0.3.3",
+    "pg": "8.22.0",
     "pino": "10.3.1"
+  },
+  "devDependencies": {
+    "@types/pg": "8.20.0"
   }
 }

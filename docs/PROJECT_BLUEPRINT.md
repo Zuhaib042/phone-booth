@@ -14,9 +14,9 @@ Only one chunk is active at a time. Finishing a milestone does not authorize sta
 
 ### Current execution status
 
-- Completed: M0.1–M0.3 and M1.1–M1.4
+- Completed: M0.1–M0.3 and M1.1–M1.5
 - Active: none
-- Next: M1.5 — Local PostgreSQL and Valkey
+- Next: M1.6 — Formatting, linting, typechecking, tests, and builds
 - Last verified: 2026-07-23 with Node.js 24 LTS and pnpm 11
 
 ## 2. Chunk rules
@@ -107,7 +107,7 @@ flowchart LR
 
 ## 6. M1 — Workspace and backend skeleton
 
-**Status:** In progress — M1.1–M1.4 complete.
+**Status:** In progress — M1.1–M1.5 complete.
 
 | Chunk | Concise change | Verification |
 |---|---|---|
@@ -115,7 +115,7 @@ flowchart LR
 | M1.2 — Complete | Add a Fastify API process with configuration validation, structured logging, `/health/live`, and graceful shutdown. | API unit test uses Fastify injection; process exits cleanly on a shutdown signal. |
 | M1.3 — Complete | Package the API in a provider-neutral, multi-stage OCI image with a minimal non-root runtime, `.dockerignore`, and API-only Compose lifecycle. | Compose builds and starts a healthy `phone-booth` project; the image serves `/health/live` and stops cleanly on a container termination signal. |
 | M1.4 — Complete | Add a worker process using the same configuration and logging packages and the same backend image. | Worker starts through the image's worker command, reports readiness, handles a no-op job, and shuts down cleanly. |
-| M1.5 | Extend the Compose stack with local PostgreSQL and Valkey services, named development volumes, health checks, and environment examples. | Compose waits for healthy dependencies; API and worker reach both datastores without storing application state yet. |
+| M1.5 — Complete | Extend the Compose stack with local PostgreSQL and Valkey services, named development volumes, health checks, and environment examples. | Compose waits for healthy dependencies; API and worker reach both datastores without storing application state yet. |
 | M1.6 | Add formatting, linting, typechecking, unit-test, and build commands. | One root verification command runs every check successfully. |
 | M1.7 | Add provider-neutral CI for verification and backend image builds. | CI runs the same root verification command as local development and builds the production image. |
 

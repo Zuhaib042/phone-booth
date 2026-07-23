@@ -19,22 +19,26 @@ pnpm install
 pnpm verify
 ```
 
-Start or stop the API and worker as a Docker Desktop project named
-`phone-booth`:
+Start or stop the API, worker, PostgreSQL, and Valkey as a Docker Desktop
+project named `phone-booth`:
 
 ```sh
 pnpm container:start
+pnpm container:health
 pnpm container:stop
 ```
 
-`container:start` builds changed layers and waits for both services to become
+`container:start` builds changed layers and waits for all four services to become
 healthy. `container:stop` keeps the stopped project visible in Docker Desktop;
 use `pnpm container:down` when you want to remove its containers and network.
+Named datastore volumes are preserved by both commands. The checked-in
+`.env.example` contains development-only connection defaults; copy it to
+`.env` only when you need local overrides.
 
 Current boundaries:
 
 - `apps/` — iOS and moderator clients
-- `services/backend/` — the Fastify API and, in a later chunk, worker process
+- `services/backend/` — the Fastify API and worker processes
 - `packages/` — contracts, game engine, configuration, and shared fixtures
 - `infra/` — provider-neutral infrastructure definitions
 - `tests/` — cross-package integration, concurrency, load, and end-to-end tests

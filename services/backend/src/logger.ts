@@ -2,7 +2,7 @@ import pino, { type Logger, type LoggerOptions } from "pino";
 
 import type { RuntimeConfig } from "./config.js";
 
-export type ServiceName = "backend-api" | "backend-worker";
+export type ServiceName = "backend-api" | "backend-health" | "backend-worker";
 
 export function createLoggerOptions(
   config: RuntimeConfig,

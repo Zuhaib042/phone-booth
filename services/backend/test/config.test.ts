@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   ConfigError,
   loadApiConfig,
+  loadDatastoreConfig,
   loadWorkerConfig,
 } from "../src/config.js";
 
@@ -58,5 +59,32 @@ test("loadWorkerConfig validates shared runtime and readiness settings", () => {
     (error: unknown) =>
       error instanceof ConfigError &&
       error.message.startsWith("WORKER_READY_FILE"),
+  );
+});
+
+test("loadDatastoreConfig requires supported connection URLs", () => {
+  assert.deepEqual(
+    loadDatastoreConfig({
+      DATABASE_URL: "postgresql://database.example/booth",
+      VALKEY_URL: "rediss://valkey.example:6379",
+    }),
+    {
+      databaseUrl: "postgresql://database.example/booth",
+      valkeyUrl: "rediss://valkey.example:6379",
+    },
+  );
+  assert.throws(
+    () => loadDatastoreConfig({ VALKEY_URL: "redis://valkey.example" }),
+    (error: unknown) =>
+      error instanceof ConfigError && error.message === "DATABASE_URL is required",
+  );
+  assert.throws(
+    () =>
+      loadDatastoreConfig({
+        DATABASE_URL: "https://database.example/booth",
+        VALKEY_URL: "redis://valkey.example",
+      }),
+    (error: unknown) =>
+      error instanceof ConfigError && error.message.startsWith("DATABASE_URL"),
   );
 });

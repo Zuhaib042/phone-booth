@@ -26,6 +26,11 @@ export interface WorkerConfig extends RuntimeConfig {
   readonly readinessFile: string;
 }
 
+export interface DatastoreConfig {
+  readonly databaseUrl: string;
+  readonly valkeyUrl: string;
+}
+
 export type Environment = Readonly<Record<string, string | undefined>>;
 
 export class ConfigError extends Error {
@@ -81,6 +86,37 @@ function readPort(environment: Environment): number {
   return port;
 }
 
+function readConnectionUrl(
+  environment: Environment,
+  key: string,
+  protocols: readonly string[],
+): string {
+  const value = environment[key];
+  if (value === undefined) {
+    throw new ConfigError(`${key} is required`);
+  }
+
+  const normalized = value.trim();
+  if (normalized.length === 0) {
+    throw new ConfigError(`${key} must not be empty`);
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(normalized);
+  } catch {
+    throw new ConfigError(`${key} must be a valid connection URL`);
+  }
+
+  if (!protocols.includes(parsed.protocol) || parsed.hostname.length === 0) {
+    throw new ConfigError(
+      `${key} must use one of these protocols: ${protocols.join(", ")}`,
+    );
+  }
+
+  return normalized;
+}
+
 export function loadApiConfig(
   environment: Environment = process.env,
 ): ApiConfig {
@@ -102,6 +138,21 @@ export function loadRuntimeConfig(
       "development",
       NODE_ENVIRONMENTS,
     ),
+  };
+}
+
+export function loadDatastoreConfig(
+  environment: Environment = process.env,
+): DatastoreConfig {
+  return {
+    databaseUrl: readConnectionUrl(environment, "DATABASE_URL", [
+      "postgres:",
+      "postgresql:",
+    ]),
+    valkeyUrl: readConnectionUrl(environment, "VALKEY_URL", [
+      "redis:",
+      "rediss:",
+    ]),
   };
 }
 
