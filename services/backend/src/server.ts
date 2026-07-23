@@ -6,15 +6,11 @@ import {
   type ApiConfig,
   type Environment,
 } from "./config.js";
-
-const SHUTDOWN_SIGNALS = ["SIGINT", "SIGTERM"] as const;
-
-export type ShutdownSignal = (typeof SHUTDOWN_SIGNALS)[number];
-
-interface SignalSource {
-  off(signal: ShutdownSignal, listener: () => void): unknown;
-  once(signal: ShutdownSignal, listener: () => void): unknown;
-}
+import {
+  subscribeToShutdownSignals,
+  type ShutdownSignal,
+  type SignalSource,
+} from "./process-signals.js";
 
 export interface GracefulShutdownController {
   dispose(): void;
@@ -45,14 +41,10 @@ export function installGracefulShutdown(
   let disposed = false;
   let shutdownPromise: Promise<void> | undefined;
 
-  const handlers: Record<ShutdownSignal, () => void> = {
-    SIGINT: () => {
-      void shutdownFromSignal("SIGINT");
-    },
-    SIGTERM: () => {
-      void shutdownFromSignal("SIGTERM");
-    },
-  };
+  const signalSubscription = subscribeToShutdownSignals(
+    (signal) => void shutdownFromSignal(signal),
+    signalSource,
+  );
 
   function dispose(): void {
     if (disposed) {
@@ -60,9 +52,7 @@ export function installGracefulShutdown(
     }
 
     disposed = true;
-    for (const signal of SHUTDOWN_SIGNALS) {
-      signalSource.off(signal, handlers[signal]);
-    }
+    signalSubscription.dispose();
   }
 
   function shutdown(signal: ShutdownSignal): Promise<void> {
@@ -87,10 +77,6 @@ export function installGracefulShutdown(
       api.log.error({ err: error, signal }, "API shutdown failed");
       onError(error);
     }
-  }
-
-  for (const signal of SHUTDOWN_SIGNALS) {
-    signalSource.once(signal, handlers[signal]);
   }
 
   return { dispose, shutdown };

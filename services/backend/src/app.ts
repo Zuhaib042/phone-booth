@@ -4,6 +4,7 @@ import Fastify, {
 } from "fastify";
 
 import type { ApiConfig } from "./config.js";
+import { createLoggerOptions } from "./logger.js";
 
 export interface BuildApiOptions {
   readonly logger?: FastifyServerOptions["logger"];
@@ -24,15 +25,8 @@ export function buildApi(
 ): FastifyInstance {
   const logger =
     options.logger === undefined
-      ? {
-          level: config.logLevel,
-          base: {
-            environment: config.nodeEnvironment,
-            service: "backend-api",
-          },
-        }
+      ? createLoggerOptions(config, "backend-api")
       : options.logger;
-
   const api = Fastify({ logger });
 
   api.get(

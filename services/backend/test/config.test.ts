@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ConfigError, loadApiConfig } from "../src/config.js";
+import {
+  ConfigError,
+  loadApiConfig,
+  loadWorkerConfig,
+} from "../src/config.js";
 
 test("loadApiConfig supplies safe local defaults", () => {
   assert.deepEqual(loadApiConfig({}), {
@@ -40,5 +44,19 @@ test("loadApiConfig rejects invalid environment values", () => {
     () => loadApiConfig({ LOG_LEVEL: "verbose" }),
     (error: unknown) =>
       error instanceof ConfigError && error.message.startsWith("LOG_LEVEL"),
+  );
+});
+
+test("loadWorkerConfig validates shared runtime and readiness settings", () => {
+  assert.deepEqual(loadWorkerConfig({}), {
+    logLevel: "info",
+    nodeEnvironment: "development",
+    readinessFile: "/tmp/project-booth-worker-ready",
+  });
+  assert.throws(
+    () => loadWorkerConfig({ WORKER_READY_FILE: " " }),
+    (error: unknown) =>
+      error instanceof ConfigError &&
+      error.message.startsWith("WORKER_READY_FILE"),
   );
 });

@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import { existsSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
@@ -49,7 +53,7 @@ function waitForExit(
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
       cleanup();
-      reject(new Error("Timed out waiting for API shutdown"));
+      reject(new Error("Timed out waiting for process shutdown"));
     }, timeoutMilliseconds);
 
     function cleanup(): void {
@@ -76,36 +80,64 @@ function waitForExit(
   });
 }
 
-for (const shutdownSignal of ["SIGINT", "SIGTERM"] as const) {
-  test(`the API process exits successfully after ${shutdownSignal}`, async () => {
-    const fixturePath = new URL(
-      "./fixtures/shutdown-process.js",
-      import.meta.url,
-    );
-    const child = spawn(process.execPath, [fileURLToPath(fixturePath)], {
-      env: {
-        ...process.env,
-        LOG_LEVEL: "info",
-        NODE_ENV: "test",
-      },
-      stdio: ["ignore", "pipe", "pipe"],
-    });
+const PROCESS_CASES = [
+  {
+    name: "API",
+    readyOutput: "fixture-ready",
+    script: "./fixtures/shutdown-process.js",
+  },
+  {
+    name: "worker",
+    readyOutput: "Worker ready",
+    script: "../src/worker-main.js",
+  },
+] as const;
 
-    const stderrChunks: Buffer[] = [];
-    child.stderr.on("data", (chunk: Buffer) => stderrChunks.push(chunk));
+for (const processCase of PROCESS_CASES) {
+  for (const shutdownSignal of ["SIGINT", "SIGTERM"] as const) {
+    test(`${processCase.name} exits successfully after ${shutdownSignal}`, async () => {
+      const scriptPath = new URL(processCase.script, import.meta.url);
+      const readinessFile = join(
+        tmpdir(),
+        `project-booth-worker-${randomUUID()}`,
+      );
+      const child = spawn(process.execPath, [fileURLToPath(scriptPath)], {
+        env: {
+          ...process.env,
+          LOG_LEVEL: "info",
+          NODE_ENV: "test",
+          ...(processCase.name === "worker"
+            ? { WORKER_READY_FILE: readinessFile }
+            : {}),
+        },
+        stdio: ["ignore", "pipe", "pipe"],
+      });
 
-    try {
-      await waitForOutput(child.stdout, "fixture-ready", START_TIMEOUT_MS);
-      assert.equal(child.kill(shutdownSignal), true);
+      const stderrChunks: Buffer[] = [];
+      child.stderr.on("data", (chunk: Buffer) => stderrChunks.push(chunk));
 
-      const result = await waitForExit(child, STOP_TIMEOUT_MS);
+      try {
+        await waitForOutput(
+          child.stdout,
+          processCase.readyOutput,
+          START_TIMEOUT_MS,
+        );
+        if (processCase.name === "worker") {
+          assert.equal(existsSync(readinessFile), true);
+        }
+        assert.equal(child.kill(shutdownSignal), true);
 
-      assert.deepEqual(result, { code: 0, signal: null });
-      assert.equal(Buffer.concat(stderrChunks).toString(), "");
-    } finally {
-      if (child.exitCode === null && child.signalCode === null) {
-        child.kill("SIGKILL");
+        const result = await waitForExit(child, STOP_TIMEOUT_MS);
+
+        assert.deepEqual(result, { code: 0, signal: null });
+        assert.equal(Buffer.concat(stderrChunks).toString(), "");
+        assert.equal(existsSync(readinessFile), false);
+      } finally {
+        if (child.exitCode === null && child.signalCode === null) {
+          child.kill("SIGKILL");
+        }
+        rmSync(readinessFile, { force: true });
       }
-    }
-  });
+    });
+  }
 }

@@ -19,6 +19,18 @@ pnpm install
 pnpm verify
 ```
 
+Start or stop the API and worker as a Docker Desktop project named
+`phone-booth`:
+
+```sh
+pnpm container:start
+pnpm container:stop
+```
+
+`container:start` builds changed layers and waits for both services to become
+healthy. `container:stop` keeps the stopped project visible in Docker Desktop;
+use `pnpm container:down` when you want to remove its containers and network.
+
 Current boundaries:
 
 - `apps/` — iOS and moderator clients

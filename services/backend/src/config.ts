@@ -12,11 +12,18 @@ const LOG_LEVELS = [
 export type NodeEnvironment = (typeof NODE_ENVIRONMENTS)[number];
 export type LogLevel = (typeof LOG_LEVELS)[number];
 
-export interface ApiConfig {
-  readonly host: string;
+export interface RuntimeConfig {
   readonly logLevel: LogLevel;
   readonly nodeEnvironment: NodeEnvironment;
+}
+
+export interface ApiConfig extends RuntimeConfig {
+  readonly host: string;
   readonly port: number;
+}
+
+export interface WorkerConfig extends RuntimeConfig {
+  readonly readinessFile: string;
 }
 
 export type Environment = Readonly<Record<string, string | undefined>>;
@@ -78,7 +85,16 @@ export function loadApiConfig(
   environment: Environment = process.env,
 ): ApiConfig {
   return {
+    ...loadRuntimeConfig(environment),
     host: readNonEmpty(environment, "HOST", "0.0.0.0"),
+    port: readPort(environment),
+  };
+}
+
+export function loadRuntimeConfig(
+  environment: Environment = process.env,
+): RuntimeConfig {
+  return {
     logLevel: readChoice(environment, "LOG_LEVEL", "info", LOG_LEVELS),
     nodeEnvironment: readChoice(
       environment,
@@ -86,6 +102,18 @@ export function loadApiConfig(
       "development",
       NODE_ENVIRONMENTS,
     ),
-    port: readPort(environment),
+  };
+}
+
+export function loadWorkerConfig(
+  environment: Environment = process.env,
+): WorkerConfig {
+  return {
+    ...loadRuntimeConfig(environment),
+    readinessFile: readNonEmpty(
+      environment,
+      "WORKER_READY_FILE",
+      "/tmp/project-booth-worker-ready",
+    ),
   };
 }

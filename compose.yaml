@@ -1,0 +1,40 @@
+name: phone-booth
+
+services:
+  api:
+    image: project-booth-api:local
+    build:
+      context: .
+      dockerfile: services/backend/Dockerfile
+    init: true
+    environment:
+      HOST: 0.0.0.0
+      LOG_LEVEL: info
+      NODE_ENV: production
+      PORT: 3000
+    ports:
+      - "127.0.0.1:${PHONE_BOOTH_API_PORT:-3000}:3000"
+    restart: "no"
+
+  worker:
+    image: project-booth-api:local
+    pull_policy: never
+    command: ["node", "services/backend/dist/src/worker-main.js"]
+    init: true
+    environment:
+      LOG_LEVEL: info
+      NODE_ENV: production
+      WORKER_READY_FILE: /tmp/project-booth-worker-ready
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('node:fs').accessSync(process.env.WORKER_READY_FILE)",
+        ]
+      interval: 5s
+      timeout: 3s
+      start_period: 2s
+      retries: 5
+    restart: "no"

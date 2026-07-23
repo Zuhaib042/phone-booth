@@ -11,6 +11,12 @@
   },
   "scripts": {
     "build": "tsc -b --pretty false",
+    "container:build": "docker compose build api",
+    "container:down": "docker compose down --remove-orphans",
+    "container:logs": "docker compose logs --follow api worker",
+    "container:start": "docker compose up --build --detach --wait",
+    "container:status": "docker compose ps --all",
+    "container:stop": "docker compose stop --timeout 10",
     "test": "pnpm --filter @project-booth/backend test",
     "typecheck": "tsc -b --pretty false",
     "verify": "pnpm run typecheck && pnpm run test && pnpm run build"

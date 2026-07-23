@@ -14,10 +14,10 @@ Only one chunk is active at a time. Finishing a milestone does not authorize sta
 
 ### Current execution status
 
-- Completed: M0.1–M0.3 and M1.1–M1.2
+- Completed: M0.1–M0.3 and M1.1–M1.4
 - Active: none
-- Next: M1.3 — API container image
-- Last verified: 2026-07-22 with Node.js 24 LTS and pnpm 11
+- Next: M1.5 — Local PostgreSQL and Valkey
+- Last verified: 2026-07-23 with Node.js 24 LTS and pnpm 11
 
 ## 2. Chunk rules
 
@@ -107,15 +107,15 @@ flowchart LR
 
 ## 6. M1 — Workspace and backend skeleton
 
-**Status:** In progress — M1.1–M1.2 complete.
+**Status:** In progress — M1.1–M1.4 complete.
 
 | Chunk | Concise change | Verification |
 |---|---|---|
 | M1.1 — Complete | Create the pnpm workspace, root scripts, pinned Node version, TypeScript base config, and documented directory skeleton. | `pnpm verify` passes from the repository root. |
 | M1.2 — Complete | Add a Fastify API process with configuration validation, structured logging, `/health/live`, and graceful shutdown. | API unit test uses Fastify injection; process exits cleanly on a shutdown signal. |
-| M1.3 | Package the API in a provider-neutral, multi-stage OCI image with a minimal non-root runtime and `.dockerignore`. | Image builds, serves `/health/live`, and stops cleanly on a container termination signal. |
-| M1.4 | Add a worker process using the same configuration and logging packages and the same backend image. | Worker starts through the image's worker command, reports readiness, handles a no-op job, and shuts down cleanly. |
-| M1.5 | Add local PostgreSQL and Valkey services, named development volumes, health checks, environment examples, and a Compose stack. | Compose waits for healthy dependencies; API and worker reach both datastores without storing application state yet. |
+| M1.3 — Complete | Package the API in a provider-neutral, multi-stage OCI image with a minimal non-root runtime, `.dockerignore`, and API-only Compose lifecycle. | Compose builds and starts a healthy `phone-booth` project; the image serves `/health/live` and stops cleanly on a container termination signal. |
+| M1.4 — Complete | Add a worker process using the same configuration and logging packages and the same backend image. | Worker starts through the image's worker command, reports readiness, handles a no-op job, and shuts down cleanly. |
+| M1.5 | Extend the Compose stack with local PostgreSQL and Valkey services, named development volumes, health checks, and environment examples. | Compose waits for healthy dependencies; API and worker reach both datastores without storing application state yet. |
 | M1.6 | Add formatting, linting, typechecking, unit-test, and build commands. | One root verification command runs every check successfully. |
 | M1.7 | Add provider-neutral CI for verification and backend image builds. | CI runs the same root verification command as local development and builds the production image. |
 
@@ -336,15 +336,15 @@ This is post-MVP and begins only after iOS retention validates further investmen
 
 ## 22. Immediate next chunk
 
-The next implementation chunk is **M1.3 — API container image**.
+The next implementation chunk is **M1.5 — Local PostgreSQL and Valkey**.
 
 It should create only:
 
-- A provider-neutral, multi-stage backend `Dockerfile`
-- A repository-level `.dockerignore`
-- A minimal production runtime containing only required output and dependencies
-- A non-root runtime user
-- An API image command using the existing graceful-shutdown behavior
-- Focused build, liveness, and termination verification
+- Pinned PostgreSQL and Valkey services in the existing Compose project
+- Named development volumes for durable local datastore files
+- Health checks and dependency-readiness ordering
+- Validated datastore connection configuration and an environment example
+- A narrow health command proving API and worker connectivity without storing application state
+- Focused Compose lifecycle and datastore connectivity verification
 
-It must not yet add the worker process, Compose stack, PostgreSQL, Valkey, authentication, game endpoints, WebSockets, SwiftUI code, or game behavior. Those belong to later chunks.
+It must not yet add migrations, application tables, durable jobs, authentication, game endpoints, WebSockets, SwiftUI code, or game behavior. Those belong to later chunks.
