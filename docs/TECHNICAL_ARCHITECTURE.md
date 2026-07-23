@@ -17,20 +17,20 @@ Both processes share one TypeScript codebase and one PostgreSQL database. Valkey
 
 The recommended MVP stack is:
 
-| Layer | Selection |
-|---|---|
-| iOS client | Swift, SwiftUI, Swift Concurrency, StoreKit 2 |
-| HTTP contract | OpenAPI 3.1 |
-| Real-time contract | Versioned JSON envelopes over secure WebSockets |
-| Backend | TypeScript on current Node.js LTS with direct Fastify; locked for the MVP |
-| Runtime packaging | Provider-neutral OCI image shared by API and worker; native iOS builds stay outside Docker |
-| Validation | JSON Schema at every external boundary |
-| Primary data | PostgreSQL |
-| Ephemeral coordination | Valkey |
-| Production hosting | To be selected later; portable containerized deployment |
-| Chat safety | Deterministic filters plus a replaceable text-moderation provider and human review |
-| Admin interface | Small authenticated React web application using the same HTTPS API |
-| Observability | Structured logs, OpenTelemetry, error tracking, and product analytics |
+| Layer                  | Selection                                                                                  |
+| ---------------------- | ------------------------------------------------------------------------------------------ |
+| iOS client             | Swift, SwiftUI, Swift Concurrency, StoreKit 2                                              |
+| HTTP contract          | OpenAPI 3.1                                                                                |
+| Real-time contract     | Versioned JSON envelopes over secure WebSockets                                            |
+| Backend                | TypeScript on current Node.js LTS with direct Fastify; locked for the MVP                  |
+| Runtime packaging      | Provider-neutral OCI image shared by API and worker; native iOS builds stay outside Docker |
+| Validation             | JSON Schema at every external boundary                                                     |
+| Primary data           | PostgreSQL                                                                                 |
+| Ephemeral coordination | Valkey                                                                                     |
+| Production hosting     | To be selected later; portable containerized deployment                                    |
+| Chat safety            | Deterministic filters plus a replaceable text-moderation provider and human review         |
+| Admin interface        | Small authenticated React web application using the same HTTPS API                         |
+| Observability          | Structured logs, OpenTelemetry, error tracking, and product analytics                      |
 
 This avoids premature microservices while preserving clean module boundaries that can be extracted later if measured load or organizational needs justify it.
 
@@ -414,16 +414,16 @@ Refund and revocation notifications create compensating ledger entries; they nev
 
 Core tables and their ownership:
 
-| Module | Tables |
-|---|---|
-| Identity | `users`, `user_identities`, `sessions`, `devices`, `device_attestations` |
-| Player | `profiles`, `progression`, `inventory`, `daily_rewards` |
-| Matchmaking | `matchmaking_tickets`, `recent_pairings` |
-| Match | `matches`, `match_players`, `rounds`, `ballots`, `jury_ballots`, `match_events` |
-| Chat | `chat_threads`, `messages`, `message_filter_results`, `mutes` |
-| Economy | `coin_accounts`, `ledger_transactions`, `ledger_entries`, `bribe_offers`, `store_purchases` |
-| Safety | `reports`, `blocks`, `enforcements`, `appeals`, `moderator_audit` |
-| Platform | `outbox_events`, `idempotency_keys`, `push_tokens`, `remote_configs`, `scheduled_jobs` |
+| Module      | Tables                                                                                      |
+| ----------- | ------------------------------------------------------------------------------------------- |
+| Identity    | `users`, `user_identities`, `sessions`, `devices`, `device_attestations`                    |
+| Player      | `profiles`, `progression`, `inventory`, `daily_rewards`                                     |
+| Matchmaking | `matchmaking_tickets`, `recent_pairings`                                                    |
+| Match       | `matches`, `match_players`, `rounds`, `ballots`, `jury_ballots`, `match_events`             |
+| Chat        | `chat_threads`, `messages`, `message_filter_results`, `mutes`                               |
+| Economy     | `coin_accounts`, `ledger_transactions`, `ledger_entries`, `bribe_offers`, `store_purchases` |
+| Safety      | `reports`, `blocks`, `enforcements`, `appeals`, `moderator_audit`                           |
+| Platform    | `outbox_events`, `idempotency_keys`, `push_tokens`, `remote_configs`, `scheduled_jobs`      |
 
 Important constraints:
 
@@ -765,17 +765,17 @@ Android implementation begins only after iOS retention and core-loop data justif
 
 ## 17. Primary risks and mitigations
 
-| Risk | Mitigation |
-|---|---|
-| Matchmaking liquidity | Six-player default, region/language widening rules, wait-time telemetry, bot tutorial but no hidden bots in real matches |
-| Payer advantage | Fixed match outflow cap, earnable coins, purchaser/non-purchaser win monitoring, remote configuration |
-| Refund laundering | Backend verification, pending balances, transfer caps, compensating ledger entries, device/account risk signals |
-| Chat rejection or abuse | Gameplay-only threads, no attachments/contact sharing, layered filtering, report/block, human moderation, reviewer demo |
-| Hidden vote leakage | Recipient-specific projections, contract tests, no broad domain-event serialization |
-| Timer and disconnect disputes | Server deadlines, idempotent scheduler, snapshots, event cursors, documented missed-ballot policy |
-| Jury abandonment | Push notification, short final phase, participation reward/XP, deterministic fallback |
-| Platform lock-in | Dockerized backend, PostgreSQL authority, standard Valkey protocol, provider adapters, OpenAPI contracts |
-| Third-party IP confusion | Original working brand, original assets/copy, no show or creator affiliation in metadata |
+| Risk                          | Mitigation                                                                                                               |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Matchmaking liquidity         | Six-player default, region/language widening rules, wait-time telemetry, bot tutorial but no hidden bots in real matches |
+| Payer advantage               | Fixed match outflow cap, earnable coins, purchaser/non-purchaser win monitoring, remote configuration                    |
+| Refund laundering             | Backend verification, pending balances, transfer caps, compensating ledger entries, device/account risk signals          |
+| Chat rejection or abuse       | Gameplay-only threads, no attachments/contact sharing, layered filtering, report/block, human moderation, reviewer demo  |
+| Hidden vote leakage           | Recipient-specific projections, contract tests, no broad domain-event serialization                                      |
+| Timer and disconnect disputes | Server deadlines, idempotent scheduler, snapshots, event cursors, documented missed-ballot policy                        |
+| Jury abandonment              | Push notification, short final phase, participation reward/XP, deterministic fallback                                    |
+| Platform lock-in              | Dockerized backend, PostgreSQL authority, standard Valkey protocol, provider adapters, OpenAPI contracts                 |
+| Third-party IP confusion      | Original working brand, original assets/copy, no show or creator affiliation in metadata                                 |
 
 ## 18. Architecture completion criteria
 

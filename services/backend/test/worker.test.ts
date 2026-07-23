@@ -22,11 +22,7 @@ test("worker handles a no-op job and reports its lifecycle", async () => {
       events.push("ready");
     },
   };
-  const worker = new WorkerRuntime(
-    pino({ level: "silent" }),
-    readiness,
-    job,
-  );
+  const worker = new WorkerRuntime(pino({ level: "silent" }), readiness, job);
 
   await worker.start();
 

@@ -46,7 +46,11 @@ export class FileReadinessReporter implements ReadinessReporter {
     try {
       await unlink(this.path);
     } catch (error: unknown) {
-      if (!(error instanceof Error && "code" in error && error.code === "ENOENT")) {
+      if (!(
+        error instanceof Error &&
+        "code" in error &&
+        error.code === "ENOENT"
+      )) {
         throw error;
       }
     }

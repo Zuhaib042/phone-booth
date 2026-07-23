@@ -1,11 +1,7 @@
 import type { FastifyInstance } from "fastify";
 
 import { buildApi } from "./app.js";
-import {
-  loadApiConfig,
-  type ApiConfig,
-  type Environment,
-} from "./config.js";
+import { loadApiConfig, type ApiConfig, type Environment } from "./config.js";
 import {
   subscribeToShutdownSignals,
   type ShutdownSignal,

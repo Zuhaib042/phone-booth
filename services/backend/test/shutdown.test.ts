@@ -67,10 +67,7 @@ function waitForExit(
       reject(error);
     }
 
-    function onExit(
-      code: number | null,
-      signal: NodeJS.Signals | null,
-    ): void {
+    function onExit(code: number | null, signal: NodeJS.Signals | null): void {
       cleanup();
       resolve({ code, signal });
     }

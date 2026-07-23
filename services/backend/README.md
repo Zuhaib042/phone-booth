@@ -4,15 +4,15 @@ The backend package contains the Project Booth Fastify API and worker processes.
 
 ## Environment
 
-| Variable | Default | Accepted values |
-|---|---:|---|
-| `HOST` | `0.0.0.0` | Any non-empty bind host |
-| `PORT` | `3000` | Integer from `0` to `65535`; use `0` only for ephemeral test ports |
-| `NODE_ENV` | `development` | `development`, `test`, or `production` |
-| `LOG_LEVEL` | `info` | `fatal`, `error`, `warn`, `info`, `debug`, `trace`, or `silent` |
-| `DATABASE_URL` | Required for datastore commands | `postgres:` or `postgresql:` connection URL |
-| `VALKEY_URL` | Required for datastore commands | `redis:` or `rediss:` connection URL |
-| `WORKER_READY_FILE` | `/tmp/project-booth-worker-ready` | Any non-empty worker-writable path |
+| Variable            |                           Default | Accepted values                                                    |
+| ------------------- | --------------------------------: | ------------------------------------------------------------------ |
+| `HOST`              |                         `0.0.0.0` | Any non-empty bind host                                            |
+| `PORT`              |                            `3000` | Integer from `0` to `65535`; use `0` only for ephemeral test ports |
+| `NODE_ENV`          |                     `development` | `development`, `test`, or `production`                             |
+| `LOG_LEVEL`         |                            `info` | `fatal`, `error`, `warn`, `info`, `debug`, `trace`, or `silent`    |
+| `DATABASE_URL`      |   Required for datastore commands | `postgres:` or `postgresql:` connection URL                        |
+| `VALKEY_URL`        |   Required for datastore commands | `redis:` or `rediss:` connection URL                               |
+| `WORKER_READY_FILE` | `/tmp/project-booth-worker-ready` | Any non-empty worker-writable path                                 |
 
 ## Commands
 

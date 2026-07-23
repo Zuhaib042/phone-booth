@@ -18,12 +18,18 @@
     "container:start": "docker compose up --build --detach --wait",
     "container:status": "docker compose ps --all",
     "container:stop": "docker compose stop --timeout 10",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "biome lint --error-on-warnings .",
+    "lint:fix": "biome lint --write .",
     "test": "pnpm --filter @project-booth/backend test",
     "typecheck": "tsc -b --pretty false",
-    "verify": "pnpm run typecheck && pnpm run test && pnpm run build"
+    "verify": "pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run build"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.5",
     "@types/node": "24.13.3",
+    "prettier": "3.9.6",
     "typescript": "7.0.2"
   }
 }

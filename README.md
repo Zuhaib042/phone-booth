@@ -8,7 +8,7 @@ Planning artifacts:
 - [Technical architecture and delivery roadmap](docs/TECHNICAL_ARCHITECTURE.md)
 - [Milestone blueprint with concise implementation chunks](docs/PROJECT_BLUEPRINT.md)
 
-The final product name, branding, art, copy, and store metadata must be original and must not imply affiliation with *Beast Games* or any other third-party property.
+The final product name, branding, art, copy, and store metadata must be original and must not imply affiliation with _Beast Games_ or any other third-party property.
 
 ## Workspace
 
@@ -18,6 +18,10 @@ The backend workspace uses Node.js 24 LTS and pnpm 11. Node 24.18.0 is pinned fo
 pnpm install
 pnpm verify
 ```
+
+`pnpm verify` checks formatting, linting, types, unit tests, and the production
+build. Use `pnpm format` and `pnpm lint:fix` to apply safe formatting and lint
+fixes before verification.
 
 Start or stop the API, worker, PostgreSQL, and Valkey as a Docker Desktop
 project named `phone-booth`:

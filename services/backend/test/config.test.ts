@@ -76,7 +76,8 @@ test("loadDatastoreConfig requires supported connection URLs", () => {
   assert.throws(
     () => loadDatastoreConfig({ VALKEY_URL: "redis://valkey.example" }),
     (error: unknown) =>
-      error instanceof ConfigError && error.message === "DATABASE_URL is required",
+      error instanceof ConfigError &&
+      error.message === "DATABASE_URL is required",
   );
   assert.throws(
     () =>
