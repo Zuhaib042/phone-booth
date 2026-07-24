@@ -7,6 +7,7 @@ import {
   type MatchId,
   type Result,
   type UserId,
+  type UtcTimestamp,
 } from "@project-booth/domain";
 
 declare const matchVersionBrand: unique symbol;
@@ -41,14 +42,17 @@ export interface MatchState {
   readonly matchId: MatchId;
   readonly version: MatchVersion;
   readonly phase: MatchPhase;
+  readonly phaseDeadline: UtcTimestamp | null;
   readonly rulesetSnapshot: RulesetV1;
   readonly roster: readonly MatchRosterEntry[];
+  readonly readyPlayerIds: readonly UserId[];
 }
 
 export interface CreateMatchStateInput {
   readonly matchId: MatchId;
   readonly ruleset: RulesetV1;
   readonly playerIds: readonly UserId[];
+  readonly lobbyDeadline: UtcTimestamp;
 }
 
 export type InvalidRosterSizeError = DomainError<
@@ -125,8 +129,10 @@ export function createMatchState(
       matchId: input.matchId,
       version: INITIAL_MATCH_VERSION,
       phase: "lobby",
+      phaseDeadline: input.lobbyDeadline,
       rulesetSnapshot: snapshotRuleset(input.ruleset),
       roster,
+      readyPlayerIds: Object.freeze([]),
     }),
   );
 }

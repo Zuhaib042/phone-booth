@@ -1,4 +1,11 @@
 export {
+  applyLobbyCommand,
+  type InvalidLobbyCommandError,
+  type LobbyCommand,
+  type LobbyEvent,
+  type LobbyTransition,
+} from "./lobby.js";
+export {
   createMatchState,
   INITIAL_MATCH_VERSION,
   type ContestantStatus,
