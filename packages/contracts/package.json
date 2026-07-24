@@ -1,0 +1,37 @@
+{
+  "name": "@project-booth/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Project Booth HTTP and real-time contract sources",
+  "license": "UNLICENSED",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    }
+  },
+  "scripts": {
+    "build": "../../node_modules/.bin/tsc -b --pretty false",
+    "check:compatibility": "pnpm run build && pnpm run compatibility:bundle-openapi && node scripts/check-contract-compatibility.mjs",
+    "compatibility:bundle-openapi": "redocly bundle project-booth@v1 --output dist/compatibility/openapi.current.json --ext json",
+    "compatibility:update-baseline": "pnpm run check:compatibility && node scripts/check-contract-compatibility.mjs --update-baseline",
+    "generate:typescript": "openapi-ts",
+    "lint": "redocly lint project-booth@v1",
+    "test": "pnpm run lint && pnpm run test:compatibility && pnpm run test:realtime && pnpm run test:typescript && pnpm run test:swift",
+    "test:compatibility": "pnpm run check:compatibility && node --test dist/test/compatibility.test.js",
+    "test:realtime": "pnpm run build && node --test dist/test/realtime.test.js",
+    "test:swift": "swift build",
+    "test:typescript": "pnpm run generate:typescript && ../../node_modules/.bin/tsc --noEmit -p test-clients/typescript/tsconfig.json"
+  },
+  "dependencies": {
+    "@project-booth/domain": "workspace:*",
+    "ajv": "8.20.0"
+  },
+  "devDependencies": {
+    "@hey-api/openapi-ts": "0.99.0",
+    "@redocly/cli": "2.40.0",
+    "@types/node": "24.13.3",
+    "typescript": "6.0.3"
+  }
+}

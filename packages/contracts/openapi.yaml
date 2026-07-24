@@ -1,0 +1,252 @@
+openapi: 3.1.0
+jsonSchemaDialect: https://spec.openapis.org/oas/3.1/dialect/base
+
+info:
+  title: Project Booth API
+  summary: Platform-neutral API contract for Project Booth clients.
+  description: |
+    Product endpoints use path versioning beginning with `/v1`. Operational
+    liveness remains at the unversioned `/health/live` path so container
+    orchestration does not depend on a product API version.
+
+    Authentication, error, pagination, and idempotency components in this
+    baseline define conventions for future endpoints; they do not implement
+    authentication or feature behavior.
+  version: 0.1.0
+
+x-project-booth-api-conventions:
+  contractVersion: 1
+  productPathPrefix: /v1
+  unversionedPaths:
+    - /health/live
+
+servers:
+  - url: "{scheme}://{authority}"
+    description: Environment-selected API origin.
+    variables:
+      scheme:
+        default: https
+        enum:
+          - https
+          - http
+        description: HTTPS in deployed environments; HTTP is local-only.
+      authority:
+        default: api.invalid
+        description: Host and optional port supplied by the client environment.
+
+tags:
+  - name: Health
+    description: Operational process-health endpoints.
+
+security:
+  - bearerAuth: []
+
+paths:
+  /health/live:
+    get:
+      tags:
+        - Health
+      summary: Check API process liveness
+      description: |
+        Reports whether the API process can serve requests. This endpoint does
+        not check PostgreSQL, Valkey, or downstream service readiness.
+      operationId: getLiveHealth
+      security: []
+      responses:
+        "200":
+          description: The API process is alive.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LiveHealth"
+              examples:
+                live:
+                  summary: Live API process
+                  value:
+                    status: ok
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: |
+        A short-lived Project Booth access token whose encoding is opaque to
+        clients. Authentication behavior is implemented in a later milestone.
+
+  parameters:
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      description: Opaque cursor returned by the preceding page.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 512
+    Limit:
+      name: limit
+      in: query
+      required: false
+      description: Maximum number of items to return.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: |
+        RFC 9562 UUID generated for one mutation attempt. Keys are scoped to
+        the authenticated account and operation; replay returns the original
+        committed response.
+      schema:
+        type: string
+        format: uuid
+
+  headers:
+    RequestId:
+      description: Request trace identifier for support and diagnostics.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
+    IdempotencyReplayed:
+      description: Whether this response replays an earlier committed result.
+      schema:
+        type: boolean
+    RetryAfter:
+      description: Seconds the client should wait before retrying.
+      schema:
+        type: integer
+        minimum: 1
+    WWWAuthenticate:
+      description: Bearer authentication challenge.
+      schema:
+        type: string
+
+  schemas:
+    LiveHealth:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          const: ok
+          description: Stable liveness status.
+
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - error
+      properties:
+        error:
+          $ref: "#/components/schemas/ApiError"
+
+    ApiError:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+        - message
+        - traceId
+      properties:
+        code:
+          type: string
+          pattern: ^[a-z][a-z0-9_]*$
+          maxLength: 64
+          description: Stable machine-readable error code.
+        message:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: Safe human-readable explanation.
+        traceId:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Identifier supplied when contacting support.
+        details:
+          type: object
+          additionalProperties: true
+          description: Safe structured context specific to the error code.
+
+    PageMetadata:
+      type: object
+      additionalProperties: false
+      required:
+        - hasMore
+      properties:
+        hasMore:
+          type: boolean
+          description: Whether another page can be requested.
+        nextCursor:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Opaque cursor for the next page; absent on the final page.
+
+  responses:
+    BadRequest:
+      description: The request is malformed or fails validation.
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/RequestId"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Authentication is missing, expired, or invalid.
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/RequestId"
+        WWW-Authenticate:
+          $ref: "#/components/headers/WWWAuthenticate"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: The authenticated account cannot perform this operation.
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/RequestId"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: The request conflicts with current authoritative state.
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/RequestId"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    TooManyRequests:
+      description: A rate limit has been exceeded.
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/RequestId"
+        Retry-After:
+          $ref: "#/components/headers/RetryAfter"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    InternalServerError:
+      description: The server could not safely complete the request.
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/RequestId"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"

@@ -53,7 +53,7 @@ The MVP does not include:
 - User-generated rooms or custom rule editors
 - Randomized paid rewards or loot boxes
 - Advertising during a live match
-- Licensed names, footage, likenesses, logos, audio, or marketing from *Beast Games*
+- Licensed names, footage, likenesses, logos, audio, or marketing from _Beast Games_
 
 ## 5. Match format
 
@@ -61,19 +61,19 @@ The MVP does not include:
 
 All numerical values are server-configurable. The launch defaults are:
 
-| Setting | MVP default |
-|---|---:|
-| Contestants | 6 |
-| First negotiation phase | 120 seconds |
-| Later negotiation phases | 90 seconds |
-| Voting phase | 20 seconds |
-| Elimination reveal | 10 seconds |
-| Runoff negotiation | 30 seconds |
-| Runoff voting | 15 seconds |
-| Final plea | 60 seconds |
-| Jury voting | 20 seconds |
-| Reconnect grace period | 30 seconds |
-| Maximum typed message | 240 characters |
+| Setting                   |                                           MVP default |
+| ------------------------- | ----------------------------------------------------: |
+| Contestants               |                                                     6 |
+| First negotiation phase   |                                           120 seconds |
+| Later negotiation phases  |                                            90 seconds |
+| Voting phase              |                                            20 seconds |
+| Elimination reveal        |                                            10 seconds |
+| Runoff negotiation        |                                            30 seconds |
+| Runoff voting             |                                            15 seconds |
+| Final plea                |                                            60 seconds |
+| Jury voting               |                                            20 seconds |
+| Reconnect grace period    |                                            30 seconds |
+| Maximum typed message     |                                        240 characters |
 | Outgoing Booth Coin limit | TBD through economy design; fixed equally per ruleset |
 
 ### 5.2 Match lifecycle

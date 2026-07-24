@@ -1,7 +1,7 @@
 # Project Booth — Technical Architecture
 
 **Status:** Proposed implementation baseline  
-**Version:** 0.3  
+**Version:** 0.4<br>
 **Depends on:** [MVP Product Specification](MVP_PRODUCT_SPEC.md)  
 **Primary client:** Native iOS using Swift and SwiftUI  
 **Future client:** Native Android using Kotlin and Compose
@@ -17,19 +17,20 @@ Both processes share one TypeScript codebase and one PostgreSQL database. Valkey
 
 The recommended MVP stack is:
 
-| Layer | Selection |
-|---|---|
-| iOS client | Swift, SwiftUI, Swift Concurrency, StoreKit 2 |
-| HTTP contract | OpenAPI 3.1 |
-| Real-time contract | Versioned JSON envelopes over secure WebSockets |
-| Backend | TypeScript on current Node.js LTS with direct Fastify; locked for the MVP |
-| Validation | JSON Schema at every external boundary |
-| Primary data | PostgreSQL |
-| Ephemeral coordination | Valkey |
-| Production hosting | To be selected later; portable containerized deployment |
-| Chat safety | Deterministic filters plus a replaceable text-moderation provider and human review |
-| Admin interface | Small authenticated React web application using the same HTTPS API |
-| Observability | Structured logs, OpenTelemetry, error tracking, and product analytics |
+| Layer                  | Selection                                                                                  |
+| ---------------------- | ------------------------------------------------------------------------------------------ |
+| iOS client             | Swift, SwiftUI, Swift Concurrency, StoreKit 2                                              |
+| HTTP contract          | OpenAPI 3.1                                                                                |
+| Real-time contract     | Versioned JSON envelopes over secure WebSockets                                            |
+| Backend                | TypeScript on current Node.js LTS with direct Fastify; locked for the MVP                  |
+| Runtime packaging      | Provider-neutral OCI image shared by API and worker; native iOS builds stay outside Docker |
+| Validation             | JSON Schema at every external boundary                                                     |
+| Primary data           | PostgreSQL                                                                                 |
+| Ephemeral coordination | Valkey                                                                                     |
+| Production hosting     | To be selected later; portable containerized deployment                                    |
+| Chat safety            | Deterministic filters plus a replaceable text-moderation provider and human review         |
+| Admin interface        | Small authenticated React web application using the same HTTPS API                         |
+| Observability          | Structured logs, OpenTelemetry, error tracking, and product analytics                      |
 
 This avoids premature microservices while preserving clean module boundaries that can be extracted later if measured load or organizational needs justify it.
 
@@ -86,6 +87,13 @@ This split provides:
 
 The WebSocket is an optimization for immediacy. PostgreSQL remains authoritative if every socket disconnects.
 
+The HTTPS source of truth is `packages/contracts/openapi.yaml`. Product
+endpoints use a `/v1` path prefix, while operational liveness remains at
+`/health/live`. The baseline contract defines bearer-token metadata without
+implementing authentication, a stable error envelope, cursor pagination, and
+RFC 9562 UUID idempotency keys. Strict linting and generated TypeScript and
+Swift client compile checks run in the root verification workflow.
+
 ### 3.3 PostgreSQL authority and Valkey coordination
 
 PostgreSQL owns every durable fact:
@@ -136,6 +144,14 @@ This is not simply “Fastify performance versus NestJS.” NestJS can use Fasti
 
 The decision may be revisited only after the MVP if measured maintenance problems or team growth justify a migration. Ordinary implementation preference is not enough to mix both application frameworks in the MVP.
 
+### 3.5 Runtime packaging
+
+The backend ships as one provider-neutral OCI image with separate API and worker commands. A multi-stage build keeps compilers and development dependencies out of the runtime stage, and the runtime process uses a non-root user. The image must handle termination signals cleanly so API connections and claimed worker jobs can stop without avoidable corruption.
+
+Docker Compose is the local orchestration layer for the API, worker, PostgreSQL, and Valkey. Each service remains a separate container, durable development data uses named volumes, and readiness-sensitive dependencies use health checks. Compose is a development and verification convenience, not the production hosting decision.
+
+The native SwiftUI application is built and tested with Xcode and is never placed in the backend container. Production infrastructure must run the same backend image built in CI without requiring provider-specific application code.
+
 ## 4. Repository structure
 
 The implementation should use one repository with platform boundaries visible in the directory layout:
@@ -155,6 +171,7 @@ phone-booth/
 │       │   └── platform/
 │       └── migrations/
 ├── packages/
+│   ├── domain/                 # Shared IDs, timestamps, errors, results, and deterministic ports
 │   ├── contracts/              # OpenAPI and real-time JSON Schemas
 │   ├── game-engine/            # Pure deterministic domain logic
 │   ├── config/                 # Typed configuration definitions
@@ -171,6 +188,17 @@ phone-booth/
 The Swift project consumes generated HTTP types from `packages/contracts/openapi.yaml`. The WebSocket payload schemas generate or validate Swift `Codable` models and TypeScript types during CI.
 
 Apple's Swift OpenAPI Generator supports generating type-safe Swift client code from OpenAPI 3.x documents and works with a URLSession transport. It should generate transport ceremony, not product-domain state management. See the [official Swift OpenAPI Generator repository](https://github.com/apple/swift-openapi-generator).
+
+### 4.1 Shared domain value conventions
+
+Internal entity identifiers use RFC 9562 UUID text, normalized to lowercase
+after validation. Domain timestamps use the canonical RFC 3339 subset
+`YYYY-MM-DDTHH:mm:ss.sssZ`: UTC only, exactly three fractional digits, and a
+valid calendar instant. Expected domain failures are serializable error values
+returned through discriminated results rather than thrown exceptions.
+
+Pure domain packages receive clocks and random sources through explicit ports.
+They do not read the system clock or global random state directly.
 
 ## 5. Backend modules
 
@@ -315,6 +343,21 @@ Responsibilities:
 - Analytics events that never include raw chat content
 - Experiment assignments that cannot alter an in-progress match
 
+Ruleset documents use an explicitly versioned JSON Schema and are validated
+before activation. Version 1 defines roster bounds, phase durations,
+communication limits, and fixed competitive-economy behavior. Each match stores
+the ruleset identifier, version, and immutable validated snapshot so later
+configuration changes cannot affect it.
+
+Coin quantities are intentionally absent from the ruleset schema while economy
+design is deferred. Rulesets contain only distinct namespaced references such
+as `economy.match_outflow_cap.standard`; a separate, versioned economy
+configuration will resolve those references after the values are approved.
+Competitive invariants remain explicit in the ruleset, including cumulative
+outgoing limits, no allowance restoration from incoming transfers, next-match
+availability for in-match purchases, reversal restoration, and settlement on
+any valid ballot so betrayal remains permitted.
+
 ## 6. Command transaction model
 
 Every state-changing request follows one transaction pattern:
@@ -405,16 +448,16 @@ Refund and revocation notifications create compensating ledger entries; they nev
 
 Core tables and their ownership:
 
-| Module | Tables |
-|---|---|
-| Identity | `users`, `user_identities`, `sessions`, `devices`, `device_attestations` |
-| Player | `profiles`, `progression`, `inventory`, `daily_rewards` |
-| Matchmaking | `matchmaking_tickets`, `recent_pairings` |
-| Match | `matches`, `match_players`, `rounds`, `ballots`, `jury_ballots`, `match_events` |
-| Chat | `chat_threads`, `messages`, `message_filter_results`, `mutes` |
-| Economy | `coin_accounts`, `ledger_transactions`, `ledger_entries`, `bribe_offers`, `store_purchases` |
-| Safety | `reports`, `blocks`, `enforcements`, `appeals`, `moderator_audit` |
-| Platform | `outbox_events`, `idempotency_keys`, `push_tokens`, `remote_configs`, `scheduled_jobs` |
+| Module      | Tables                                                                                      |
+| ----------- | ------------------------------------------------------------------------------------------- |
+| Identity    | `users`, `user_identities`, `sessions`, `devices`, `device_attestations`                    |
+| Player      | `profiles`, `progression`, `inventory`, `daily_rewards`                                     |
+| Matchmaking | `matchmaking_tickets`, `recent_pairings`                                                    |
+| Match       | `matches`, `match_players`, `rounds`, `ballots`, `jury_ballots`, `match_events`             |
+| Chat        | `chat_threads`, `messages`, `message_filter_results`, `mutes`                               |
+| Economy     | `coin_accounts`, `ledger_transactions`, `ledger_entries`, `bribe_offers`, `store_purchases` |
+| Safety      | `reports`, `blocks`, `enforcements`, `appeals`, `moderator_audit`                           |
+| Platform    | `outbox_events`, `idempotency_keys`, `push_tokens`, `remote_configs`, `scheduled_jobs`      |
 
 Important constraints:
 
@@ -444,12 +487,14 @@ The selected host must support long-lived secure WebSockets. Connections must st
 ```json
 {
   "schemaVersion": 1,
-  "eventId": "01J...",
-  "type": "bribe.offer.accepted",
+  "eventId": "019b1000-0000-7000-8000-000000000001",
+  "type": "round.phase.changed",
   "occurredAt": "2026-07-20T12:34:56.789Z",
-  "matchId": "01J...",
+  "matchId": "019b1000-0000-7000-8000-000000000100",
   "matchVersion": 42,
   "recipientCursor": 815,
+  "audience": "player",
+  "recipientUserId": "019b1000-0000-7000-8000-000000000200",
   "payload": {}
 }
 ```
@@ -461,7 +506,18 @@ Every event declares an audience:
 - `active`: safe only for active contestants
 - `moderator`: internal evidence only
 
+Event and entity identifiers are RFC 9562 UUIDs. `matchVersion` is the
+positive, authoritative sequence of committed match state. `recipientCursor`
+is the positive delivery sequence for the receiving stream and is not a
+global event offset. A `player` event requires its one `recipientUserId`;
+broader audiences must omit that field.
+
 There is no generic broadcast of a domain record. A projection layer creates an audience-safe payload, and contract tests assert that ballot targets, private messages, offers, wallet details, device information, and moderation data never appear in broader events.
+
+Protocol errors use a separate versioned envelope with stable machine-readable
+codes. They contain no free-form server message or arbitrary details. Each code
+permits only its bounded recovery field: expected schema version, retry delay,
+or resume cursor.
 
 ### 9.3 Snapshots
 
@@ -643,6 +699,13 @@ Administrative controls must support disabling purchases, chat, new matchmaking,
 
 ## 15. Testing strategy
 
+OpenAPI and real-time schemas have a checked-in, annotation-free compatibility
+baseline. CI permits additive paths, components, responses, tags, and optional
+properties, while rejecting removals, changed existing constraints, tighter
+bounds, new required fields, and enum changes. Updating the baseline is an
+explicit reviewed release action; incompatible behavior uses a new versioned
+path or schema rather than overwriting the old contract.
+
 ### 15.1 Pure domain tests
 
 - Every legal and illegal state transition
@@ -756,17 +819,17 @@ Android implementation begins only after iOS retention and core-loop data justif
 
 ## 17. Primary risks and mitigations
 
-| Risk | Mitigation |
-|---|---|
-| Matchmaking liquidity | Six-player default, region/language widening rules, wait-time telemetry, bot tutorial but no hidden bots in real matches |
-| Payer advantage | Fixed match outflow cap, earnable coins, purchaser/non-purchaser win monitoring, remote configuration |
-| Refund laundering | Backend verification, pending balances, transfer caps, compensating ledger entries, device/account risk signals |
-| Chat rejection or abuse | Gameplay-only threads, no attachments/contact sharing, layered filtering, report/block, human moderation, reviewer demo |
-| Hidden vote leakage | Recipient-specific projections, contract tests, no broad domain-event serialization |
-| Timer and disconnect disputes | Server deadlines, idempotent scheduler, snapshots, event cursors, documented missed-ballot policy |
-| Jury abandonment | Push notification, short final phase, participation reward/XP, deterministic fallback |
-| Platform lock-in | Dockerized backend, PostgreSQL authority, standard Valkey protocol, provider adapters, OpenAPI contracts |
-| Third-party IP confusion | Original working brand, original assets/copy, no show or creator affiliation in metadata |
+| Risk                          | Mitigation                                                                                                               |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Matchmaking liquidity         | Six-player default, region/language widening rules, wait-time telemetry, bot tutorial but no hidden bots in real matches |
+| Payer advantage               | Fixed match outflow cap, earnable coins, purchaser/non-purchaser win monitoring, remote configuration                    |
+| Refund laundering             | Backend verification, pending balances, transfer caps, compensating ledger entries, device/account risk signals          |
+| Chat rejection or abuse       | Gameplay-only threads, no attachments/contact sharing, layered filtering, report/block, human moderation, reviewer demo  |
+| Hidden vote leakage           | Recipient-specific projections, contract tests, no broad domain-event serialization                                      |
+| Timer and disconnect disputes | Server deadlines, idempotent scheduler, snapshots, event cursors, documented missed-ballot policy                        |
+| Jury abandonment              | Push notification, short final phase, participation reward/XP, deterministic fallback                                    |
+| Platform lock-in              | Dockerized backend, PostgreSQL authority, standard Valkey protocol, provider adapters, OpenAPI contracts                 |
+| Third-party IP confusion      | Original working brand, original assets/copy, no show or creator affiliation in metadata                                 |
 
 ## 18. Architecture completion criteria
 

@@ -1,0 +1,20 @@
+{
+  "formatVersion": 1,
+  "cases": [
+    {
+      "name": "removes the live-health operation",
+      "contract": "openapi",
+      "operation": "remove",
+      "path": ["paths", "/health/live", "get"],
+      "expectedKind": "removed"
+    },
+    {
+      "name": "narrows the accepted recipient cursor range",
+      "contract": "serverEvent",
+      "operation": "replace",
+      "path": ["properties", "recipientCursor", "minimum"],
+      "value": 2,
+      "expectedKind": "narrowed"
+    }
+  ]
+}
