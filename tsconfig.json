@@ -5,6 +5,7 @@
   "references": [
     { "path": "./packages/domain" },
     { "path": "./packages/config" },
+    { "path": "./packages/game-engine" },
     { "path": "./packages/contracts" },
     { "path": "./services/backend" }
   ]

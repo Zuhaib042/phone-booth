@@ -175,11 +175,7 @@
               "type": "string"
             }
           },
-          "required": [
-            "code",
-            "message",
-            "traceId"
-          ],
+          "required": ["code", "message", "traceId"],
           "type": "object"
         },
         "ErrorResponse": {
@@ -189,9 +185,7 @@
               "$ref": "#/components/schemas/ApiError"
             }
           },
-          "required": [
-            "error"
-          ],
+          "required": ["error"],
           "type": "object"
         },
         "LiveHealth": {
@@ -202,9 +196,7 @@
               "type": "string"
             }
           },
-          "required": [
-            "status"
-          ],
+          "required": ["status"],
           "type": "object"
         },
         "PageMetadata": {
@@ -219,9 +211,7 @@
               "type": "string"
             }
           },
-          "required": [
-            "hasMore"
-          ],
+          "required": ["hasMore"],
           "type": "object"
         }
       },
@@ -250,9 +240,7 @@
             }
           },
           "security": [],
-          "tags": [
-            "Health"
-          ]
+          "tags": ["Health"]
         }
       }
     },
@@ -270,10 +258,7 @@
           },
           "scheme": {
             "default": "https",
-            "enum": [
-              "http",
-              "https"
-            ]
+            "enum": ["http", "https"]
           }
         }
       }
@@ -286,9 +271,7 @@
     "x-project-booth-api-conventions": {
       "contractVersion": 1,
       "productPathPrefix": "/v1",
-      "unversionedPaths": [
-        "/health/live"
-      ]
+      "unversionedPaths": ["/health/live"]
     }
   },
   "protocolError": {
@@ -364,9 +347,7 @@
             "const": true
           }
         },
-        "required": [
-          "retryAfterSeconds"
-        ],
+        "required": ["retryAfterSeconds"],
         "type": "object"
       },
       {
@@ -381,9 +362,7 @@
             "const": true
           }
         },
-        "required": [
-          "resumeFromCursor"
-        ],
+        "required": ["resumeFromCursor"],
         "type": "object"
       },
       {
@@ -398,9 +377,7 @@
             "const": false
           }
         },
-        "required": [
-          "expectedSchemaVersion"
-        ],
+        "required": ["expectedSchemaVersion"],
         "type": "object"
       }
     ],
@@ -587,9 +564,7 @@
               "const": "player"
             }
           },
-          "required": [
-            "audience"
-          ],
+          "required": ["audience"],
           "type": "object"
         },
         "then": {
@@ -602,9 +577,7 @@
               "type": "string"
             }
           },
-          "required": [
-            "recipientUserId"
-          ],
+          "required": ["recipientUserId"],
           "type": "object"
         }
       },
@@ -612,15 +585,10 @@
         "if": {
           "properties": {
             "audience": {
-              "enum": [
-                "active",
-                "participants"
-              ]
+              "enum": ["active", "participants"]
             }
           },
-          "required": [
-            "audience"
-          ],
+          "required": ["audience"],
           "type": "object"
         },
         "then": {
@@ -635,12 +603,7 @@
     ],
     "properties": {
       "audience": {
-        "enum": [
-          "active",
-          "moderator",
-          "participants",
-          "player"
-        ]
+        "enum": ["active", "moderator", "participants", "player"]
       },
       "eventId": {
         "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[1-8][0-9A-Fa-f]{3}-[89ABab][0-9A-Fa-f]{3}-[0-9A-Fa-f]{12}$",

@@ -14,9 +14,9 @@ Only one chunk is active at a time. Finishing a milestone does not authorize sta
 
 ### Current execution status
 
-- Completed: M0.1–M0.3, M1.1–M1.7, and M2.1–M2.5
+- Completed: M0.1–M0.3, M1.1–M1.7, M2.1–M2.5, and M3.1
 - Active: none
-- Next: M3.1 — Match state model
+- Next: M3.2 — Lobby readiness and first negotiation
 - Last verified: 2026-07-24 with Node.js 24 LTS, pnpm 11, and Swift 6.3
 
 ## 2. Chunk rules
@@ -137,16 +137,16 @@ flowchart LR
 
 ## 8. M3 — Deterministic match engine
 
-| Chunk | Concise change                                                                     | Verification                                                                        |
-| ----- | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| M3.1  | Model roster, player status, match version, phase, and immutable ruleset snapshot. | State construction and invalid-roster tests pass.                                   |
-| M3.2  | Implement lobby readiness and transition into the first negotiation phase.         | Ready, timeout, insufficient-roster, and duplicate-command cases pass.              |
-| M3.3  | Implement negotiation and normal ballot validation without persistence.            | Eligibility, self-vote, revision, deadline, and missing-ballot tests pass.          |
-| M3.4  | Implement tally and single-player elimination.                                     | Majority, plurality, automatic self-vote, and hidden-ballot projections pass.       |
-| M3.5  | Implement runoff phases and cumulative-vote/random tie fallback.                   | Every documented tie path is deterministic under an injected random value.          |
-| M3.6  | Implement eliminated jurors, finalist pleas, jury ballots, and winner fallback.    | Jury majority, missing jurors, ties, and no-juror cases pass.                       |
-| M3.7  | Build the post-match dossier projection.                                           | Fixtures reveal votes and deals only after completion and only to eligible viewers. |
-| M3.8  | Add a headless six-player match simulator.                                         | Seeded simulations complete with exactly one winner and no illegal transition.      |
+| Chunk           | Concise change                                                                     | Verification                                                                        |
+| --------------- | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| M3.1 — Complete | Model roster, player status, match version, phase, and immutable ruleset snapshot. | State construction and invalid-roster tests pass.                                   |
+| M3.2            | Implement lobby readiness and transition into the first negotiation phase.         | Ready, timeout, insufficient-roster, and duplicate-command cases pass.              |
+| M3.3            | Implement negotiation and normal ballot validation without persistence.            | Eligibility, self-vote, revision, deadline, and missing-ballot tests pass.          |
+| M3.4            | Implement tally and single-player elimination.                                     | Majority, plurality, automatic self-vote, and hidden-ballot projections pass.       |
+| M3.5            | Implement runoff phases and cumulative-vote/random tie fallback.                   | Every documented tie path is deterministic under an injected random value.          |
+| M3.6            | Implement eliminated jurors, finalist pleas, jury ballots, and winner fallback.    | Jury majority, missing jurors, ties, and no-juror cases pass.                       |
+| M3.7            | Build the post-match dossier projection.                                           | Fixtures reveal votes and deals only after completion and only to eligible viewers. |
+| M3.8            | Add a headless six-player match simulator.                                         | Seeded simulations complete with exactly one winner and no illegal transition.      |
 
 **Exit gate:** Thousands of seeded headless matches complete deterministically without HTTP, databases, sockets, or iOS code.
 
@@ -338,16 +338,17 @@ This is post-MVP and begins only after iOS retention validates further investmen
 
 ## 22. Immediate next chunk
 
-The next implementation chunk is **M3.1 — Match state model**.
+The next implementation chunk is **M3.2 — Lobby readiness and first
+negotiation**.
 
 It should create only:
 
-- A pure game-engine package with no transport or persistence dependencies
-- Match identity, positive match version, current phase, and immutable ruleset
-  snapshot state
-- Roster entries with player identity and explicit contestant status
-- Construction validation for roster size, uniqueness, and initial state
-- Unit tests for valid construction and invalid rosters
+- Lobby readiness state for the existing roster
+- Deterministic ready-command behavior, including duplicate commands
+- Transition into the first negotiation phase when readiness permits
+- Lobby timeout and insufficient-roster outcomes
+- Focused tests for ready, timeout, insufficient-roster, and duplicate-command
+  cases
 
-It must not transition phases, run timers, accept ballots or offers, tally
-votes, award coins, persist state, or add HTTP and WebSocket behavior.
+It must not accept normal ballots or offers, tally votes, eliminate players,
+award coins, persist state, or add HTTP and WebSocket behavior.

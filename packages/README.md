@@ -7,6 +7,7 @@ Current packages:
 - `config/` — versioned ruleset and future remote-configuration schemas
 - `contracts/` — OpenAPI and real-time contract sources plus generation checks
 - `domain/` — identifiers, timestamps, errors, results, and deterministic ports
+- `game-engine/` — pure deterministic match state and transitions
 
 Planned boundaries include contracts, deterministic game logic, typed
 configuration, and test fixtures. They will be created only by the milestone

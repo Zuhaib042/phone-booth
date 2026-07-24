@@ -62,6 +62,19 @@ importers:
         specifier: 24.13.3
         version: 24.13.3
 
+  packages/game-engine:
+    dependencies:
+      '@project-booth/config':
+        specifier: workspace:*
+        version: link:../config
+      '@project-booth/domain':
+        specifier: workspace:*
+        version: link:../domain
+    devDependencies:
+      '@types/node':
+        specifier: 24.13.3
+        version: 24.13.3
+
   services/backend:
     dependencies:
       fastify:
