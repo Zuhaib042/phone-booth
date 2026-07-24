@@ -14,9 +14,9 @@ Only one chunk is active at a time. Finishing a milestone does not authorize sta
 
 ### Current execution status
 
-- Completed: M0.1–M0.3 and M1.1–M1.6
+- Completed: M0.1–M0.3, M1.1–M1.7, and M2.1–M2.2
 - Active: none
-- Next: M1.7 — Provider-neutral CI
+- Next: M2.3 — OpenAPI 3.1 baseline
 - Last verified: 2026-07-23 with Node.js 24 LTS and pnpm 11
 
 ## 2. Chunk rules
@@ -107,7 +107,7 @@ flowchart LR
 
 ## 6. M1 — Workspace and backend skeleton
 
-**Status:** In progress — M1.1–M1.6 complete.
+**Status:** Complete.
 
 | Chunk           | Concise change                                                                                                                                 | Verification                                                                                                                                    |
 | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -117,19 +117,21 @@ flowchart LR
 | M1.4 — Complete | Add a worker process using the same configuration and logging packages and the same backend image.                                             | Worker starts through the image's worker command, reports readiness, handles a no-op job, and shuts down cleanly.                               |
 | M1.5 — Complete | Extend the Compose stack with local PostgreSQL and Valkey services, named development volumes, health checks, and environment examples.        | Compose waits for healthy dependencies; API and worker reach both datastores without storing application state yet.                             |
 | M1.6 — Complete | Add formatting, linting, typechecking, unit-test, and build commands.                                                                          | One root verification command runs every check successfully.                                                                                    |
-| M1.7            | Add provider-neutral CI for verification and backend image builds.                                                                             | CI runs the same root verification command as local development and builds the production image.                                                |
+| M1.7 — Complete | Add provider-neutral CI for verification and backend image builds.                                                                             | CI runs the same root verification command as local development and builds the production image.                                                |
 
 **Exit gate:** A new developer can clone the repository, start the complete local stack with Compose, run both backend processes as containers, and pass every check from documented commands.
 
 ## 7. M2 — Contracts and domain foundations
 
-| Chunk | Concise change                                                                                                           | Verification                                                                     |
-| ----- | ------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
-| M2.1  | Define shared identifiers, UTC timestamp rules, domain errors, result types, injected clock, and injected random source. | Unit tests prove deterministic time and random behavior.                         |
-| M2.2  | Define the versioned ruleset schema with symbolic economy configuration and no launch coin values.                       | Invalid phases, durations, roster sizes, and economy relationships are rejected. |
-| M2.3  | Create the OpenAPI 3.1 document with health, error, pagination, idempotency, and authentication conventions.             | OpenAPI lint passes and generated sample clients compile.                        |
-| M2.4  | Define the WebSocket event envelope, audiences, cursor, match version, and protocol error schema.                        | JSON Schema accepts valid fixtures and rejects hidden or malformed fields.       |
-| M2.5  | Add contract compatibility checks that detect breaking changes.                                                          | A deliberately breaking fixture fails the compatibility check.                   |
+**Status:** In progress — M2.1–M2.2 complete.
+
+| Chunk           | Concise change                                                                                                           | Verification                                                                     |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| M2.1 — Complete | Define shared identifiers, UTC timestamp rules, domain errors, result types, injected clock, and injected random source. | Unit tests prove deterministic time and random behavior.                         |
+| M2.2 — Complete | Define the versioned ruleset schema with symbolic economy configuration and no launch coin values.                       | Invalid phases, durations, roster sizes, and economy relationships are rejected. |
+| M2.3            | Create the OpenAPI 3.1 document with health, error, pagination, idempotency, and authentication conventions.             | OpenAPI lint passes and generated sample clients compile.                        |
+| M2.4            | Define the WebSocket event envelope, audiences, cursor, match version, and protocol error schema.                        | JSON Schema accepts valid fixtures and rejects hidden or malformed fields.       |
+| M2.5            | Add contract compatibility checks that detect breaking changes.                                                          | A deliberately breaking fixture fails the compatibility check.                   |
 
 **Exit gate:** HTTP and real-time conventions exist before feature endpoints, and domain code has no wall-clock or random global dependency.
 
@@ -336,15 +338,16 @@ This is post-MVP and begins only after iOS retention validates further investmen
 
 ## 22. Immediate next chunk
 
-The next implementation chunk is **M1.5 — Local PostgreSQL and Valkey**.
+The next implementation chunk is **M2.3 — OpenAPI 3.1 baseline**.
 
 It should create only:
 
-- Pinned PostgreSQL and Valkey services in the existing Compose project
-- Named development volumes for durable local datastore files
-- Health checks and dependency-readiness ordering
-- Validated datastore connection configuration and an environment example
-- A narrow health command proving API and worker connectivity without storing application state
-- Focused Compose lifecycle and datastore connectivity verification
+- An OpenAPI 3.1 root document with API metadata and versioning conventions
+- The existing live-health endpoint contract
+- Shared error, pagination, authentication, and idempotency components
+- Contract linting in the root verification command
+- A generated sample TypeScript client and Swift model/client compile check
 
-It must not yet add migrations, application tables, durable jobs, authentication, game endpoints, WebSockets, SwiftUI code, or game behavior. Those belong to later chunks.
+It must not yet add feature endpoints, authentication behavior, WebSocket
+events, migrations, persistence, SwiftUI screens, or game behavior. Those
+belong to later chunks.

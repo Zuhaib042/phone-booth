@@ -22,7 +22,7 @@
     "format:check": "prettier --check .",
     "lint": "biome lint --error-on-warnings .",
     "lint:fix": "biome lint --write .",
-    "test": "pnpm --filter @project-booth/backend test",
+    "test": "pnpm --recursive --if-present test",
     "typecheck": "tsc -b --pretty false",
     "verify": "pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run build"
   },

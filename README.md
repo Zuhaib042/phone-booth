@@ -23,6 +23,10 @@ pnpm verify
 build. Use `pnpm format` and `pnpm lint:fix` to apply safe formatting and lint
 fixes before verification.
 
+GitHub Actions runs the same verification command for pushes and pull requests,
+then builds the backend production image. CI does not publish an image or
+contain deployment-provider configuration.
+
 Start or stop the API, worker, PostgreSQL, and Valkey as a Docker Desktop
 project named `phone-booth`:
 
@@ -43,7 +47,7 @@ Current boundaries:
 
 - `apps/` — iOS and moderator clients
 - `services/backend/` — the Fastify API and worker processes
-- `packages/` — contracts, game engine, configuration, and shared fixtures
+- `packages/` — domain foundations, contracts, game engine, configuration, and shared fixtures
 - `infra/` — provider-neutral infrastructure definitions
 - `tests/` — cross-package integration, concurrency, load, and end-to-end tests
 

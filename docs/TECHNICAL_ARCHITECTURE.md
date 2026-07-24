@@ -164,6 +164,7 @@ phone-booth/
 │       │   └── platform/
 │       └── migrations/
 ├── packages/
+│   ├── domain/                 # Shared IDs, timestamps, errors, results, and deterministic ports
 │   ├── contracts/              # OpenAPI and real-time JSON Schemas
 │   ├── game-engine/            # Pure deterministic domain logic
 │   ├── config/                 # Typed configuration definitions
@@ -180,6 +181,17 @@ phone-booth/
 The Swift project consumes generated HTTP types from `packages/contracts/openapi.yaml`. The WebSocket payload schemas generate or validate Swift `Codable` models and TypeScript types during CI.
 
 Apple's Swift OpenAPI Generator supports generating type-safe Swift client code from OpenAPI 3.x documents and works with a URLSession transport. It should generate transport ceremony, not product-domain state management. See the [official Swift OpenAPI Generator repository](https://github.com/apple/swift-openapi-generator).
+
+### 4.1 Shared domain value conventions
+
+Internal entity identifiers use RFC 9562 UUID text, normalized to lowercase
+after validation. Domain timestamps use the canonical RFC 3339 subset
+`YYYY-MM-DDTHH:mm:ss.sssZ`: UTC only, exactly three fractional digits, and a
+valid calendar instant. Expected domain failures are serializable error values
+returned through discriminated results rather than thrown exceptions.
+
+Pure domain packages receive clocks and random sources through explicit ports.
+They do not read the system clock or global random state directly.
 
 ## 5. Backend modules
 
@@ -323,6 +335,21 @@ Responsibilities:
 - Remote values for timers, roster size, grants, caps, rate limits, and moderation thresholds
 - Analytics events that never include raw chat content
 - Experiment assignments that cannot alter an in-progress match
+
+Ruleset documents use an explicitly versioned JSON Schema and are validated
+before activation. Version 1 defines roster bounds, phase durations,
+communication limits, and fixed competitive-economy behavior. Each match stores
+the ruleset identifier, version, and immutable validated snapshot so later
+configuration changes cannot affect it.
+
+Coin quantities are intentionally absent from the ruleset schema while economy
+design is deferred. Rulesets contain only distinct namespaced references such
+as `economy.match_outflow_cap.standard`; a separate, versioned economy
+configuration will resolve those references after the values are approved.
+Competitive invariants remain explicit in the ruleset, including cumulative
+outgoing limits, no allowance restoration from incoming transfers, next-match
+availability for in-match purchases, reversal restoration, and settlement on
+any valid ballot so betrayal remains permitted.
 
 ## 6. Command transaction model
 

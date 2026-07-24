@@ -21,6 +21,25 @@ importers:
         specifier: 7.0.2
         version: 7.0.2
 
+  packages/config:
+    dependencies:
+      '@project-booth/domain':
+        specifier: workspace:*
+        version: link:../domain
+      ajv:
+        specifier: 8.20.0
+        version: 8.20.0
+    devDependencies:
+      '@types/node':
+        specifier: 24.13.3
+        version: 24.13.3
+
+  packages/domain:
+    devDependencies:
+      '@types/node':
+        specifier: 24.13.3
+        version: 24.13.3
+
   services/backend:
     dependencies:
       fastify:

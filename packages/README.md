@@ -2,6 +2,11 @@
 
 Framework-independent shared packages live here.
 
-Planned boundaries include contracts, deterministic game logic, typed configuration, and test fixtures. They will be created only by the milestone that needs them.
+Current packages:
 
-M1.1 intentionally contains no shared package code.
+- `config/` — versioned ruleset and future remote-configuration schemas
+- `domain/` — identifiers, timestamps, errors, results, and deterministic ports
+
+Planned boundaries include contracts, deterministic game logic, typed
+configuration, and test fixtures. They will be created only by the milestone
+that needs them.
