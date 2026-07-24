@@ -87,6 +87,13 @@ This split provides:
 
 The WebSocket is an optimization for immediacy. PostgreSQL remains authoritative if every socket disconnects.
 
+The HTTPS source of truth is `packages/contracts/openapi.yaml`. Product
+endpoints use a `/v1` path prefix, while operational liveness remains at
+`/health/live`. The baseline contract defines bearer-token metadata without
+implementing authentication, a stable error envelope, cursor pagination, and
+RFC 9562 UUID idempotency keys. Strict linting and generated TypeScript and
+Swift client compile checks run in the root verification workflow.
+
 ### 3.3 PostgreSQL authority and Valkey coordination
 
 PostgreSQL owns every durable fact:

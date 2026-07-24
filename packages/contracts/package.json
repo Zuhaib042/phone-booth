@@ -1,0 +1,20 @@
+{
+  "name": "@project-booth/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Project Booth HTTP and real-time contract sources",
+  "license": "UNLICENSED",
+  "type": "module",
+  "scripts": {
+    "generate:typescript": "openapi-ts",
+    "lint": "redocly lint project-booth@v1",
+    "test": "pnpm run lint && pnpm run test:typescript && pnpm run test:swift",
+    "test:swift": "swift build",
+    "test:typescript": "pnpm run generate:typescript && ../../node_modules/.bin/tsc --noEmit -p test-clients/typescript/tsconfig.json"
+  },
+  "devDependencies": {
+    "@hey-api/openapi-ts": "0.99.0",
+    "@redocly/cli": "2.40.0",
+    "typescript": "6.0.3"
+  }
+}

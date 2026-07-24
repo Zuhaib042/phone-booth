@@ -13,8 +13,12 @@ coverage/
 # Apple tooling
 DerivedData/
 .build/
+.swiftpm/
 *.xcuserstate
 xcuserdata/
+
+# Generated contract clients
+packages/contracts/generated/
 
 # Operating system and editor files
 .DS_Store

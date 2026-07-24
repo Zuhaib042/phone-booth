@@ -19,9 +19,10 @@ pnpm install
 pnpm verify
 ```
 
-`pnpm verify` checks formatting, linting, types, unit tests, and the production
-build. Use `pnpm format` and `pnpm lint:fix` to apply safe formatting and lint
-fixes before verification.
+`pnpm verify` checks formatting, linting, types, unit tests, generated HTTP
+clients, and the production build. Contract verification requires Swift 6.1 or
+newer in addition to Node and pnpm. Use `pnpm format` and `pnpm lint:fix` to
+apply safe formatting and lint fixes before verification.
 
 GitHub Actions runs the same verification command for pushes and pull requests,
 then builds the backend production image. CI does not publish an image or
@@ -52,4 +53,7 @@ Current boundaries:
 - `tests/` — cross-package integration, concurrency, load, and end-to-end tests
 
 The current API exposes `GET /health/live`. Backend environment variables and
-package commands are documented in [services/backend/README.md](services/backend/README.md).
+package commands are documented in
+[services/backend/README.md](services/backend/README.md). The versioned HTTP
+contract and its generation checks are documented in
+[packages/contracts/README.md](packages/contracts/README.md).
