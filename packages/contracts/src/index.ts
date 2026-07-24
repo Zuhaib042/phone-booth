@@ -1,4 +1,10 @@
 export {
+  createCompatibilitySurface,
+  findBreakingContractChanges,
+  type ContractCompatibilityIssue,
+  type ContractCompatibilityIssueKind,
+} from "./compatibility.js";
+export {
   CLIENT_INTERNAL_FIELD_NAMES,
   PLAYER_PRIVATE_FIELD_NAMES,
   PROTOCOL_ERROR_CODES,

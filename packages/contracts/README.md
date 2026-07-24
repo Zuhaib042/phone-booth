@@ -40,3 +40,21 @@ schemas and tests before producing those events.
 
 `pnpm run test:realtime` compiles the reusable validators and runs valid,
 malformed, routing, recovery, and recursive private-field leakage fixtures.
+
+## Compatibility policy
+
+`compatibility/baselines/contracts.v1.json` is the reviewed compatibility
+surface for OpenAPI and both real-time schemas. Documentation annotations are
+excluded. New paths, components, responses, tags, and optional properties are
+additive; removing or changing an existing member, tightening a bound, adding
+a required field, or changing an enum fails the check.
+
+Run `pnpm contracts:check` from the repository root. The same check runs inside
+`pnpm verify` through this package's tests. The deliberately breaking fixture
+proves that operation removal and constraint narrowing are rejected.
+
+After an additive contract change is accepted for release, run
+`pnpm --filter @project-booth/contracts run compatibility:update-baseline` and
+review the baseline diff. Updating the baseline must not be used to hide a
+failed compatibility check; an incompatible change requires a new versioned
+path or schema.

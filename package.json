@@ -18,6 +18,7 @@
     "container:start": "docker compose up --build --detach --wait",
     "container:status": "docker compose ps --all",
     "container:stop": "docker compose stop --timeout 10",
+    "contracts:check": "pnpm --filter @project-booth/contracts run check:compatibility",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "biome lint --error-on-warnings .",

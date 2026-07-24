@@ -1,7 +1,7 @@
 # Project Booth — Milestone Blueprint
 
 **Status:** Active execution plan  
-**Version:** 0.4<br>
+**Version:** 0.5<br>
 **Framework decision:** Direct Fastify locked for the MVP  
 **Product source:** [MVP Product Specification](MVP_PRODUCT_SPEC.md)  
 **Architecture source:** [Technical Architecture](TECHNICAL_ARCHITECTURE.md)
@@ -14,9 +14,9 @@ Only one chunk is active at a time. Finishing a milestone does not authorize sta
 
 ### Current execution status
 
-- Completed: M0.1–M0.3, M1.1–M1.7, and M2.1–M2.4
+- Completed: M0.1–M0.3, M1.1–M1.7, and M2.1–M2.5
 - Active: none
-- Next: M2.5 — Contract compatibility checks
+- Next: M3.1 — Match state model
 - Last verified: 2026-07-24 with Node.js 24 LTS, pnpm 11, and Swift 6.3
 
 ## 2. Chunk rules
@@ -123,7 +123,7 @@ flowchart LR
 
 ## 7. M2 — Contracts and domain foundations
 
-**Status:** In progress — M2.1–M2.4 complete.
+**Status:** Complete — M2.1–M2.5.
 
 | Chunk           | Concise change                                                                                                           | Verification                                                                     |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
@@ -131,7 +131,7 @@ flowchart LR
 | M2.2 — Complete | Define the versioned ruleset schema with symbolic economy configuration and no launch coin values.                       | Invalid phases, durations, roster sizes, and economy relationships are rejected. |
 | M2.3 — Complete | Create the OpenAPI 3.1 document with health, error, pagination, idempotency, and authentication conventions.             | OpenAPI lint passes and generated sample clients compile.                        |
 | M2.4 — Complete | Define the WebSocket event envelope, audiences, cursor, match version, and protocol error schema.                        | JSON Schema accepts valid fixtures and rejects hidden or malformed fields.       |
-| M2.5            | Add contract compatibility checks that detect breaking changes.                                                          | A deliberately breaking fixture fails the compatibility check.                   |
+| M2.5 — Complete | Add contract compatibility checks that detect breaking changes.                                                          | A deliberately breaking fixture fails the compatibility check.                   |
 
 **Exit gate:** HTTP and real-time conventions exist before feature endpoints, and domain code has no wall-clock or random global dependency.
 
@@ -338,15 +338,16 @@ This is post-MVP and begins only after iOS retention validates further investmen
 
 ## 22. Immediate next chunk
 
-The next implementation chunk is **M2.5 — Contract compatibility checks**.
+The next implementation chunk is **M3.1 — Match state model**.
 
 It should create only:
 
-- Checked-in compatibility baselines for the current OpenAPI and real-time
-  schemas
-- An automated comparison that fails on breaking removals or narrowing changes
-- A deliberately breaking fixture proving the comparison fails
-- A repository command suitable for local verification and CI
+- A pure game-engine package with no transport or persistence dependencies
+- Match identity, positive match version, current phase, and immutable ruleset
+  snapshot state
+- Roster entries with player identity and explicit contestant status
+- Construction validation for roster size, uniqueness, and initial state
+- Unit tests for valid construction and invalid rosters
 
-It must not add feature endpoints or event payloads, open WebSocket
-connections, publish events, or implement application behavior.
+It must not transition phases, run timers, accept ballots or offers, tally
+votes, award coins, persist state, or add HTTP and WebSocket behavior.

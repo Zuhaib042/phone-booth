@@ -1,0 +1,698 @@
+{
+  "formatVersion": 1,
+  "openapi": {
+    "components": {
+      "headers": {
+        "IdempotencyReplayed": {
+          "schema": {
+            "type": "boolean"
+          }
+        },
+        "RequestId": {
+          "schema": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "RetryAfter": {
+          "schema": {
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "WWWAuthenticate": {
+          "schema": {
+            "type": "string"
+          }
+        }
+      },
+      "parameters": {
+        "Cursor": {
+          "in": "query",
+          "name": "cursor",
+          "required": false,
+          "schema": {
+            "maxLength": 512,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "IdempotencyKey": {
+          "in": "header",
+          "name": "Idempotency-Key",
+          "required": true,
+          "schema": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "Limit": {
+          "in": "query",
+          "name": "limit",
+          "required": false,
+          "schema": {
+            "default": 20,
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        }
+      },
+      "responses": {
+        "BadRequest": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ErrorResponse"
+              }
+            }
+          },
+          "headers": {
+            "X-Request-Id": {
+              "$ref": "#/components/headers/RequestId"
+            }
+          }
+        },
+        "Conflict": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ErrorResponse"
+              }
+            }
+          },
+          "headers": {
+            "X-Request-Id": {
+              "$ref": "#/components/headers/RequestId"
+            }
+          }
+        },
+        "Forbidden": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ErrorResponse"
+              }
+            }
+          },
+          "headers": {
+            "X-Request-Id": {
+              "$ref": "#/components/headers/RequestId"
+            }
+          }
+        },
+        "InternalServerError": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ErrorResponse"
+              }
+            }
+          },
+          "headers": {
+            "X-Request-Id": {
+              "$ref": "#/components/headers/RequestId"
+            }
+          }
+        },
+        "TooManyRequests": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ErrorResponse"
+              }
+            }
+          },
+          "headers": {
+            "Retry-After": {
+              "$ref": "#/components/headers/RetryAfter"
+            },
+            "X-Request-Id": {
+              "$ref": "#/components/headers/RequestId"
+            }
+          }
+        },
+        "Unauthorized": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ErrorResponse"
+              }
+            }
+          },
+          "headers": {
+            "WWW-Authenticate": {
+              "$ref": "#/components/headers/WWWAuthenticate"
+            },
+            "X-Request-Id": {
+              "$ref": "#/components/headers/RequestId"
+            }
+          }
+        }
+      },
+      "schemas": {
+        "ApiError": {
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_]*$",
+              "type": "string"
+            },
+            "details": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "message": {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            "traceId": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "message",
+            "traceId"
+          ],
+          "type": "object"
+        },
+        "ErrorResponse": {
+          "additionalProperties": false,
+          "properties": {
+            "error": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          },
+          "required": [
+            "error"
+          ],
+          "type": "object"
+        },
+        "LiveHealth": {
+          "additionalProperties": false,
+          "properties": {
+            "status": {
+              "const": "ok",
+              "type": "string"
+            }
+          },
+          "required": [
+            "status"
+          ],
+          "type": "object"
+        },
+        "PageMetadata": {
+          "additionalProperties": false,
+          "properties": {
+            "hasMore": {
+              "type": "boolean"
+            },
+            "nextCursor": {
+              "maxLength": 512,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "hasMore"
+          ],
+          "type": "object"
+        }
+      },
+      "securitySchemes": {
+        "bearerAuth": {
+          "scheme": "bearer",
+          "type": "http"
+        }
+      }
+    },
+    "jsonSchemaDialect": "https://spec.openapis.org/oas/3.1/dialect/base",
+    "openapi": "3.1.0",
+    "paths": {
+      "/health/live": {
+        "get": {
+          "operationId": "getLiveHealth",
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/LiveHealth"
+                  }
+                }
+              }
+            }
+          },
+          "security": [],
+          "tags": [
+            "Health"
+          ]
+        }
+      }
+    },
+    "security": [
+      {
+        "bearerAuth": []
+      }
+    ],
+    "servers": [
+      {
+        "url": "{scheme}://{authority}",
+        "variables": {
+          "authority": {
+            "default": "api.invalid"
+          },
+          "scheme": {
+            "default": "https",
+            "enum": [
+              "http",
+              "https"
+            ]
+          }
+        }
+      }
+    ],
+    "tags": [
+      {
+        "name": "Health"
+      }
+    ],
+    "x-project-booth-api-conventions": {
+      "contractVersion": 1,
+      "productPathPrefix": "/v1",
+      "unversionedPaths": [
+        "/health/live"
+      ]
+    }
+  },
+  "protocolError": {
+    "$id": "urn:project-booth:schema:protocol-error:v1",
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "oneOf": [
+      {
+        "properties": {
+          "code": {
+            "const": "authentication_required"
+          },
+          "expectedSchemaVersion": false,
+          "resumeFromCursor": false,
+          "retryAfterSeconds": false,
+          "retryable": {
+            "const": false
+          }
+        },
+        "type": "object"
+      },
+      {
+        "properties": {
+          "code": {
+            "const": "forbidden"
+          },
+          "expectedSchemaVersion": false,
+          "resumeFromCursor": false,
+          "retryAfterSeconds": false,
+          "retryable": {
+            "const": false
+          }
+        },
+        "type": "object"
+      },
+      {
+        "properties": {
+          "code": {
+            "const": "internal_error"
+          },
+          "expectedSchemaVersion": false,
+          "resumeFromCursor": false,
+          "retryAfterSeconds": false,
+          "retryable": {
+            "const": true
+          }
+        },
+        "type": "object"
+      },
+      {
+        "properties": {
+          "code": {
+            "const": "malformed_message"
+          },
+          "expectedSchemaVersion": false,
+          "resumeFromCursor": false,
+          "retryAfterSeconds": false,
+          "retryable": {
+            "const": false
+          }
+        },
+        "type": "object"
+      },
+      {
+        "properties": {
+          "code": {
+            "const": "rate_limited"
+          },
+          "expectedSchemaVersion": false,
+          "resumeFromCursor": false,
+          "retryAfterSeconds": true,
+          "retryable": {
+            "const": true
+          }
+        },
+        "required": [
+          "retryAfterSeconds"
+        ],
+        "type": "object"
+      },
+      {
+        "properties": {
+          "code": {
+            "const": "resync_required"
+          },
+          "expectedSchemaVersion": false,
+          "resumeFromCursor": true,
+          "retryAfterSeconds": false,
+          "retryable": {
+            "const": true
+          }
+        },
+        "required": [
+          "resumeFromCursor"
+        ],
+        "type": "object"
+      },
+      {
+        "properties": {
+          "code": {
+            "const": "unsupported_schema_version"
+          },
+          "expectedSchemaVersion": true,
+          "resumeFromCursor": false,
+          "retryAfterSeconds": false,
+          "retryable": {
+            "const": false
+          }
+        },
+        "required": [
+          "expectedSchemaVersion"
+        ],
+        "type": "object"
+      }
+    ],
+    "properties": {
+      "code": {
+        "enum": [
+          "authentication_required",
+          "forbidden",
+          "internal_error",
+          "malformed_message",
+          "rate_limited",
+          "resync_required",
+          "unsupported_schema_version"
+        ]
+      },
+      "correlationId": {
+        "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[1-8][0-9A-Fa-f]{3}-[89ABab][0-9A-Fa-f]{3}-[0-9A-Fa-f]{12}$",
+        "type": "string"
+      },
+      "errorId": {
+        "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[1-8][0-9A-Fa-f]{3}-[89ABab][0-9A-Fa-f]{3}-[0-9A-Fa-f]{12}$",
+        "type": "string"
+      },
+      "expectedSchemaVersion": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "occurredAt": {
+        "format": "canonical-utc-milliseconds",
+        "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$",
+        "type": "string"
+      },
+      "resumeFromCursor": {
+        "maximum": 9007199254740991,
+        "minimum": 0,
+        "type": "integer"
+      },
+      "retryAfterSeconds": {
+        "maximum": 3600,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "retryable": {
+        "type": "boolean"
+      },
+      "schemaVersion": {
+        "const": 1
+      },
+      "type": {
+        "const": "protocol.error"
+      }
+    },
+    "required": [
+      "code",
+      "errorId",
+      "occurredAt",
+      "retryable",
+      "schemaVersion",
+      "type"
+    ],
+    "type": "object"
+  },
+  "serverEvent": {
+    "$defs": {
+      "playerSafeValue": {
+        "anyOf": [
+          {
+            "additionalProperties": {
+              "$ref": "#/$defs/playerSafeValue"
+            },
+            "maxProperties": 128,
+            "propertyNames": {
+              "not": {
+                "enum": [
+                  "deviceId",
+                  "deviceInformation",
+                  "deviceRiskSignals",
+                  "enforcementDetails",
+                  "moderationData",
+                  "moderationNotes",
+                  "reportId"
+                ]
+              }
+            },
+            "type": "object"
+          },
+          {
+            "items": {
+              "$ref": "#/$defs/playerSafeValue"
+            },
+            "maxItems": 256,
+            "type": "array"
+          },
+          {
+            "maxLength": 8192,
+            "type": "string"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          },
+          {
+            "type": "number"
+          }
+        ]
+      },
+      "sharedSafeValue": {
+        "anyOf": [
+          {
+            "additionalProperties": {
+              "$ref": "#/$defs/sharedSafeValue"
+            },
+            "maxProperties": 128,
+            "propertyNames": {
+              "not": {
+                "enum": [
+                  "ballotTargetId",
+                  "coinBalance",
+                  "conversation",
+                  "conversations",
+                  "deviceId",
+                  "deviceInformation",
+                  "deviceRiskSignals",
+                  "enforcementDetails",
+                  "messageBody",
+                  "moderationData",
+                  "moderationNotes",
+                  "offer",
+                  "offerAmount",
+                  "offers",
+                  "outflowAllowance",
+                  "pendingFunds",
+                  "privateMessage",
+                  "privateMessages",
+                  "reportId",
+                  "submittedBallot",
+                  "wallet",
+                  "walletBalance"
+                ]
+              }
+            },
+            "type": "object"
+          },
+          {
+            "items": {
+              "$ref": "#/$defs/sharedSafeValue"
+            },
+            "maxItems": 256,
+            "type": "array"
+          },
+          {
+            "maxLength": 8192,
+            "type": "string"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          },
+          {
+            "type": "number"
+          }
+        ]
+      }
+    },
+    "$id": "urn:project-booth:schema:server-event-envelope:v1",
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "allOf": [
+      {
+        "else": {
+          "properties": {
+            "recipientUserId": false
+          },
+          "type": "object"
+        },
+        "if": {
+          "properties": {
+            "audience": {
+              "const": "player"
+            }
+          },
+          "required": [
+            "audience"
+          ],
+          "type": "object"
+        },
+        "then": {
+          "properties": {
+            "payload": {
+              "$ref": "#/$defs/playerSafeValue"
+            },
+            "recipientUserId": {
+              "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[1-8][0-9A-Fa-f]{3}-[89ABab][0-9A-Fa-f]{3}-[0-9A-Fa-f]{12}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "recipientUserId"
+          ],
+          "type": "object"
+        }
+      },
+      {
+        "if": {
+          "properties": {
+            "audience": {
+              "enum": [
+                "active",
+                "participants"
+              ]
+            }
+          },
+          "required": [
+            "audience"
+          ],
+          "type": "object"
+        },
+        "then": {
+          "properties": {
+            "payload": {
+              "$ref": "#/$defs/sharedSafeValue"
+            }
+          },
+          "type": "object"
+        }
+      }
+    ],
+    "properties": {
+      "audience": {
+        "enum": [
+          "active",
+          "moderator",
+          "participants",
+          "player"
+        ]
+      },
+      "eventId": {
+        "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[1-8][0-9A-Fa-f]{3}-[89ABab][0-9A-Fa-f]{3}-[0-9A-Fa-f]{12}$",
+        "type": "string"
+      },
+      "matchId": {
+        "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[1-8][0-9A-Fa-f]{3}-[89ABab][0-9A-Fa-f]{3}-[0-9A-Fa-f]{12}$",
+        "type": "string"
+      },
+      "matchVersion": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "occurredAt": {
+        "format": "canonical-utc-milliseconds",
+        "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$",
+        "type": "string"
+      },
+      "payload": {
+        "maxProperties": 128,
+        "type": "object"
+      },
+      "recipientCursor": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "recipientUserId": {
+        "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[1-8][0-9A-Fa-f]{3}-[89ABab][0-9A-Fa-f]{3}-[0-9A-Fa-f]{12}$",
+        "type": "string"
+      },
+      "schemaVersion": {
+        "const": 1
+      },
+      "type": {
+        "maxLength": 128,
+        "pattern": "^[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*){2,}$",
+        "type": "string"
+      }
+    },
+    "required": [
+      "audience",
+      "eventId",
+      "matchId",
+      "matchVersion",
+      "occurredAt",
+      "payload",
+      "recipientCursor",
+      "schemaVersion",
+      "type"
+    ],
+    "type": "object"
+  }
+}

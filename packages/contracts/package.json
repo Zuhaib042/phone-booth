@@ -13,10 +13,14 @@
   },
   "scripts": {
     "build": "../../node_modules/.bin/tsc -b --pretty false",
+    "check:compatibility": "pnpm run build && pnpm run compatibility:bundle-openapi && node scripts/check-contract-compatibility.mjs",
+    "compatibility:bundle-openapi": "redocly bundle project-booth@v1 --output dist/compatibility/openapi.current.json --ext json",
+    "compatibility:update-baseline": "pnpm run check:compatibility && node scripts/check-contract-compatibility.mjs --update-baseline",
     "generate:typescript": "openapi-ts",
     "lint": "redocly lint project-booth@v1",
-    "test": "pnpm run lint && pnpm run test:realtime && pnpm run test:typescript && pnpm run test:swift",
-    "test:realtime": "pnpm run build && node --test dist/test/*.test.js",
+    "test": "pnpm run lint && pnpm run test:compatibility && pnpm run test:realtime && pnpm run test:typescript && pnpm run test:swift",
+    "test:compatibility": "pnpm run check:compatibility && node --test dist/test/compatibility.test.js",
+    "test:realtime": "pnpm run build && node --test dist/test/realtime.test.js",
     "test:swift": "swift build",
     "test:typescript": "pnpm run generate:typescript && ../../node_modules/.bin/tsc --noEmit -p test-clients/typescript/tsconfig.json"
   },

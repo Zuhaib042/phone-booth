@@ -121,7 +121,7 @@ const SEQUENCE_SCHEMA = {
 function safeJsonValueSchema(
   selfReference: string,
   forbiddenNames: readonly string[],
-): object {
+): JsonObject {
   return {
     anyOf: [
       { type: "null" },
@@ -245,7 +245,7 @@ function protocolErrorVariant(
   code: ProtocolErrorCode,
   retryable: boolean,
   requiredContext?: ProtocolContextField,
-): object {
+): JsonObject {
   return {
     type: "object",
     ...(requiredContext === undefined ? {} : { required: [requiredContext] }),

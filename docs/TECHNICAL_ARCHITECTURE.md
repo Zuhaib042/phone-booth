@@ -699,6 +699,13 @@ Administrative controls must support disabling purchases, chat, new matchmaking,
 
 ## 15. Testing strategy
 
+OpenAPI and real-time schemas have a checked-in, annotation-free compatibility
+baseline. CI permits additive paths, components, responses, tags, and optional
+properties, while rejecting removals, changed existing constraints, tighter
+bounds, new required fields, and enum changes. Updating the baseline is an
+explicit reviewed release action; incompatible behavior uses a new versioned
+path or schema rather than overwriting the old contract.
+
 ### 15.1 Pure domain tests
 
 - Every legal and illegal state transition
