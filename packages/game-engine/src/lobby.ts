@@ -2,14 +2,18 @@ import {
   domainError,
   err,
   ok,
-  utcTimestampFromDate,
   type DomainError,
   type Result,
   type UserId,
   type UtcTimestamp,
 } from "@project-booth/domain";
 
-import type { MatchState, MatchVersion } from "./match-state.js";
+import type { MatchState } from "./match-state.js";
+import {
+  createMatchTransition,
+  deadlineAfterSeconds,
+  type MatchTransition,
+} from "./transition.js";
 
 export type LobbyCommand =
   | {
@@ -37,10 +41,7 @@ export type LobbyEvent =
       readonly reason: "insufficient_ready_contestants";
     };
 
-export interface LobbyTransition {
-  readonly state: MatchState;
-  readonly events: readonly LobbyEvent[];
-}
+export type LobbyTransition = MatchTransition<LobbyEvent>;
 
 type InvalidLobbyReason =
   | "deadline_passed"
@@ -64,25 +65,6 @@ function invalid(reason: InvalidLobbyReason): InvalidLobbyCommandError {
   });
 }
 
-function nextVersion(version: MatchVersion): MatchVersion {
-  return (version + 1) as MatchVersion;
-}
-
-function transition(
-  state: MatchState,
-  updates: Partial<MatchState>,
-  events: readonly LobbyEvent[],
-): LobbyTransition {
-  return Object.freeze({
-    state: Object.freeze({
-      ...state,
-      ...updates,
-      version: nextVersion(state.version),
-    }),
-    events: Object.freeze(events.map((event) => Object.freeze(event))),
-  });
-}
-
 function beginNegotiation(
   state: MatchState,
   occurredAt: UtcTimestamp,
@@ -90,15 +72,13 @@ function beginNegotiation(
   events: readonly LobbyEvent[],
 ): Result<LobbyTransition, InvalidLobbyCommandError> {
   const duration = state.rulesetSnapshot.phaseDurationsSeconds.firstNegotiation;
-  const deadline = utcTimestampFromDate(
-    new Date(Date.parse(occurredAt) + duration * 1_000),
-  );
+  const deadline = deadlineAfterSeconds(occurredAt, duration);
   if (!deadline.ok) {
     return err(invalid("deadline_out_of_range"));
   }
 
   return ok(
-    transition(
+    createMatchTransition(
       state,
       {
         phase: "negotiation",
@@ -151,7 +131,7 @@ export function applyLobbyCommand(
 
     return readyPlayerIds.length === state.roster.length
       ? beginNegotiation(state, command.occurredAt, readyPlayerIds, events)
-      : ok(transition(state, { readyPlayerIds }, events));
+      : ok(createMatchTransition(state, { readyPlayerIds }, events));
   }
 
   if (command.occurredAt < state.phaseDeadline) {
@@ -161,12 +141,16 @@ export function applyLobbyCommand(
     state.readyPlayerIds.length < state.rulesetSnapshot.roster.minimumReadyCount
   ) {
     return ok(
-      transition(state, { phase: "cancelled", phaseDeadline: null }, [
-        {
-          type: "match.cancelled",
-          reason: "insufficient_ready_contestants",
-        },
-      ]),
+      createMatchTransition(
+        state,
+        { phase: "cancelled", phaseDeadline: null },
+        [
+          {
+            type: "match.cancelled",
+            reason: "insufficient_ready_contestants",
+          },
+        ],
+      ),
     );
   }
 

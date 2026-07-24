@@ -38,6 +38,13 @@ export interface MatchRosterEntry {
   readonly status: ContestantStatus;
 }
 
+export interface NormalBallot {
+  readonly voterId: UserId;
+  readonly targetId: UserId;
+  readonly revision: number;
+  readonly submittedAt: UtcTimestamp;
+}
+
 export interface MatchState {
   readonly matchId: MatchId;
   readonly version: MatchVersion;
@@ -46,6 +53,8 @@ export interface MatchState {
   readonly rulesetSnapshot: RulesetV1;
   readonly roster: readonly MatchRosterEntry[];
   readonly readyPlayerIds: readonly UserId[];
+  readonly normalBallots: readonly NormalBallot[];
+  readonly missingNormalBallotPlayerIds: readonly UserId[];
 }
 
 export interface CreateMatchStateInput {
@@ -133,6 +142,8 @@ export function createMatchState(
       rulesetSnapshot: snapshotRuleset(input.ruleset),
       roster,
       readyPlayerIds: Object.freeze([]),
+      normalBallots: Object.freeze([]),
+      missingNormalBallotPlayerIds: Object.freeze([]),
     }),
   );
 }

@@ -14,10 +14,12 @@ import {
 
 import {
   applyLobbyCommand,
+  applyRoundCommand,
   createMatchState,
   INITIAL_MATCH_VERSION,
   type LobbyTransition,
   type MatchState,
+  type RoundTransition,
 } from "../src/index.js";
 
 const RULESET_INPUT = {
@@ -147,6 +149,8 @@ test("constructs the documented immutable initial match state", () => {
   assert.equal(result.value.phase, "lobby");
   assert.equal(result.value.phaseDeadline, lobbyDeadline);
   assert.deepEqual(result.value.readyPlayerIds, []);
+  assert.deepEqual(result.value.normalBallots, []);
+  assert.deepEqual(result.value.missingNormalBallotPlayerIds, []);
   assert.deepEqual(
     result.value.roster.map(({ playerId, status }) => ({ playerId, status })),
     playerIds.map((playerId) => ({ playerId, status: "active" })),
@@ -358,6 +362,206 @@ test("invalid lobby actors, times, and phases return structured errors", () => {
       "deadline_passed",
       "deadline_not_reached",
       "wrong_phase",
+    ],
+  );
+});
+
+function negotiationState(): MatchState {
+  return readyPlayers(6);
+}
+
+function votingState(): MatchState {
+  const state = negotiationState();
+  return success(
+    applyRoundCommand(state, {
+      type: "negotiation_timed_out",
+      occurredAt: state.phaseDeadline as UtcTimestamp,
+    }),
+  ).state;
+}
+
+function submitBallot(
+  state: MatchState,
+  voterId: UserId,
+  targetId: UserId,
+  occurredAt = timestamp("2026-07-24T12:02:15.000Z"),
+): RoundTransition {
+  return success(ballotResult(state, voterId, targetId, occurredAt));
+}
+
+function ballotResult(
+  state: MatchState,
+  voterId: UserId,
+  targetId: UserId,
+  occurredAt = timestamp("2026-07-24T12:02:15.000Z"),
+) {
+  return applyRoundCommand(state, {
+    type: "normal_ballot_submitted",
+    voterId,
+    targetId,
+    occurredAt,
+  });
+}
+
+function player(index: number): UserId {
+  return playerIds[index] as UserId;
+}
+
+test("negotiation closes into a versioned normal voting phase", () => {
+  const state = negotiationState();
+  const transition = success(
+    applyRoundCommand(state, {
+      type: "negotiation_timed_out",
+      occurredAt: state.phaseDeadline as UtcTimestamp,
+    }),
+  );
+
+  assert.equal(transition.state.phase, "voting");
+  assert.equal(transition.state.phaseDeadline, "2026-07-24T12:02:30.000Z");
+  assert.equal(transition.state.version, 8);
+  assert.deepEqual(transition.state.normalBallots, []);
+  assert.deepEqual(transition.events, [
+    {
+      type: "match.phase_changed",
+      phase: "voting",
+      deadline: "2026-07-24T12:02:30.000Z",
+    },
+  ]);
+});
+
+test("ballots stay canonical, private, revisable, and idempotent", () => {
+  const first = submitBallot(votingState(), player(2), player(3));
+  const second = submitBallot(first.state, player(0), player(1));
+  const duplicate = submitBallot(second.state, player(0), player(1));
+  const revision = submitBallot(
+    duplicate.state,
+    player(0),
+    player(4),
+    timestamp("2026-07-24T12:02:20.000Z"),
+  );
+
+  assert.deepEqual(
+    second.state.normalBallots.map(({ voterId }) => voterId),
+    [playerIds[0], playerIds[2]],
+  );
+  assert.equal(duplicate.state, second.state);
+  assert.deepEqual(duplicate.events, []);
+  assert.equal(revision.state.normalBallots.length, 2);
+  assert.deepEqual(revision.events, [
+    {
+      type: "normal_ballot.acknowledged",
+      recipientUserId: playerIds[0],
+      ballotTargetId: playerIds[4],
+      revision: 2,
+    },
+  ]);
+  assert.equal(Object.isFrozen(revision.state.normalBallots), true);
+  assert.equal(revision.state.normalBallots.every(Object.isFrozen), true);
+});
+
+function submitAllBallots(): RoundTransition {
+  let state = votingState();
+  let transition: RoundTransition | undefined;
+  for (let index = 0; index < playerIds.length; index += 1) {
+    transition = submitBallot(
+      state,
+      player(index),
+      player((index + 1) % playerIds.length),
+    );
+    state = transition.state;
+  }
+  assert.notEqual(transition, undefined);
+  return transition as RoundTransition;
+}
+
+test("all final ballots close voting deterministically without tallying", () => {
+  const first = submitAllBallots();
+  const second = submitAllBallots();
+
+  assert.deepEqual(first, second);
+  assert.equal(first.state.phase, "tally");
+  assert.equal(first.state.phaseDeadline, null);
+  assert.equal(first.state.normalBallots.length, 6);
+  assert.deepEqual(first.state.missingNormalBallotPlayerIds, []);
+  assert.deepEqual(first.events.at(-1), {
+    type: "match.phase_changed",
+    phase: "tally",
+    deadline: null,
+  });
+});
+
+test("voting timeout records missing voters without automatic ballots", () => {
+  let state = votingState();
+  state = submitBallot(state, player(0), player(1)).state;
+  state = submitBallot(state, player(2), player(3)).state;
+
+  const closed = success(
+    applyRoundCommand(state, {
+      type: "voting_timed_out",
+      occurredAt: state.phaseDeadline as UtcTimestamp,
+    }),
+  );
+
+  assert.equal(closed.state.phase, "tally");
+  assert.equal(closed.state.normalBallots.length, 2);
+  assert.deepEqual(closed.state.missingNormalBallotPlayerIds, [
+    playerIds[1],
+    playerIds[3],
+    playerIds[4],
+    playerIds[5],
+  ]);
+});
+
+test("invalid ballot actors, targets, phases, and times are rejected", () => {
+  const negotiation = negotiationState();
+  const voting = votingState();
+  const outsider = id("user", 99);
+  const eliminated = Object.freeze({
+    ...voting,
+    roster: Object.freeze(
+      voting.roster.map((entry) =>
+        entry.playerId === playerIds[1]
+          ? Object.freeze({ ...entry, status: "eliminated" as const })
+          : entry,
+      ),
+    ),
+  });
+
+  const cases = [
+    applyRoundCommand(negotiation, {
+      type: "negotiation_timed_out",
+      occurredAt: timestamp("2026-07-24T12:02:09.999Z"),
+    }),
+    ballotResult(negotiation, player(0), player(1)),
+    ballotResult(voting, player(0), player(0)),
+    ballotResult(voting, outsider, player(0)),
+    ballotResult(voting, player(0), outsider),
+    ballotResult(eliminated, player(1), player(0)),
+    ballotResult(eliminated, player(0), player(1)),
+    ballotResult(
+      voting,
+      player(0),
+      player(1),
+      voting.phaseDeadline as UtcTimestamp,
+    ),
+    applyRoundCommand(voting, {
+      type: "voting_timed_out",
+      occurredAt: timestamp("2026-07-24T12:02:29.999Z"),
+    }),
+  ];
+
+  assert.deepEqual(
+    cases.map((result) => (result.ok ? null : result.error.details.reason)),
+    [
+      "deadline_not_reached",
+      "wrong_phase",
+      "self_vote",
+      "voter_not_eligible",
+      "target_not_eligible",
+      "voter_not_eligible",
+      "target_not_eligible",
+      "deadline_passed",
+      "deadline_not_reached",
     ],
   );
 });

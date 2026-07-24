@@ -14,9 +14,9 @@ Only one chunk is active at a time. Finishing a milestone does not authorize sta
 
 ### Current execution status
 
-- Completed: M0.1–M0.3, M1.1–M1.7, M2.1–M2.5, and M3.1–M3.2
+- Completed: M0.1–M0.3, M1.1–M1.7, M2.1–M2.5, and M3.1–M3.3
 - Active: none
-- Next: M3.3 — Negotiation and normal ballot validation
+- Next: M3.4 — Tally and single-player elimination
 - Last verified: 2026-07-24 with Node.js 24 LTS, pnpm 11, and Swift 6.3
 
 ## 2. Chunk rules
@@ -141,7 +141,7 @@ flowchart LR
 | --------------- | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
 | M3.1 — Complete | Model roster, player status, match version, phase, and immutable ruleset snapshot. | State construction and invalid-roster tests pass.                                   |
 | M3.2 — Complete | Implement lobby readiness and transition into the first negotiation phase.         | Ready, timeout, insufficient-roster, and duplicate-command cases pass.              |
-| M3.3            | Implement negotiation and normal ballot validation without persistence.            | Eligibility, self-vote, revision, deadline, and missing-ballot tests pass.          |
+| M3.3 — Complete | Implement negotiation and normal ballot validation without persistence.            | Eligibility, self-vote, revision, deadline, and missing-ballot tests pass.          |
 | M3.4            | Implement tally and single-player elimination.                                     | Majority, plurality, automatic self-vote, and hidden-ballot projections pass.       |
 | M3.5            | Implement runoff phases and cumulative-vote/random tie fallback.                   | Every documented tie path is deterministic under an injected random value.          |
 | M3.6            | Implement eliminated jurors, finalist pleas, jury ballots, and winner fallback.    | Jury majority, missing jurors, ties, and no-juror cases pass.                       |
@@ -338,16 +338,16 @@ This is post-MVP and begins only after iOS retention validates further investmen
 
 ## 22. Immediate next chunk
 
-The next implementation chunk is **M3.3 — Negotiation and normal ballot
-validation**.
+The next implementation chunk is **M3.4 — Tally and single-player
+elimination**.
 
 It should create only:
 
-- Deterministic transition from negotiation into normal voting
-- Normal ballot state and command validation without persistence
-- Eligibility, self-vote, revision, deadline, and missing-ballot behavior
-- Private ballot acknowledgements or domain events that reveal no other ballot
+- Automatic self-votes for contestants who missed the normal ballot deadline
+- Deterministic normal-ballot tallying and clear-result elimination
+- Aggregate elimination projections that reveal no individual ballot targets
+- Detection of tied leaders without resolving the tie
 - Focused positive, negative, invariant, and deterministic tests
 
-It must not tally votes, resolve ties, eliminate players, award coins, persist
-state, or add HTTP and WebSocket behavior.
+It must not implement runoff voting, cumulative-vote or random tie fallback,
+jury behavior, persistence, or HTTP and WebSocket behavior.

@@ -17,4 +17,12 @@ export {
   type MatchRosterEntry,
   type MatchState,
   type MatchVersion,
+  type NormalBallot,
 } from "./match-state.js";
+export {
+  applyRoundCommand,
+  type InvalidRoundCommandError,
+  type RoundCommand,
+  type RoundEvent,
+  type RoundTransition,
+} from "./voting.js";
