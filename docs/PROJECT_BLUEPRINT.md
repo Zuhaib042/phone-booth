@@ -1,7 +1,7 @@
 # Project Booth — Milestone Blueprint
 
 **Status:** Active execution plan  
-**Version:** 0.3<br>
+**Version:** 0.4<br>
 **Framework decision:** Direct Fastify locked for the MVP  
 **Product source:** [MVP Product Specification](MVP_PRODUCT_SPEC.md)  
 **Architecture source:** [Technical Architecture](TECHNICAL_ARCHITECTURE.md)
@@ -14,9 +14,9 @@ Only one chunk is active at a time. Finishing a milestone does not authorize sta
 
 ### Current execution status
 
-- Completed: M0.1–M0.3, M1.1–M1.7, and M2.1–M2.3
+- Completed: M0.1–M0.3, M1.1–M1.7, and M2.1–M2.4
 - Active: none
-- Next: M2.4 — WebSocket event envelope
+- Next: M2.5 — Contract compatibility checks
 - Last verified: 2026-07-24 with Node.js 24 LTS, pnpm 11, and Swift 6.3
 
 ## 2. Chunk rules
@@ -123,14 +123,14 @@ flowchart LR
 
 ## 7. M2 — Contracts and domain foundations
 
-**Status:** In progress — M2.1–M2.3 complete.
+**Status:** In progress — M2.1–M2.4 complete.
 
 | Chunk           | Concise change                                                                                                           | Verification                                                                     |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
 | M2.1 — Complete | Define shared identifiers, UTC timestamp rules, domain errors, result types, injected clock, and injected random source. | Unit tests prove deterministic time and random behavior.                         |
 | M2.2 — Complete | Define the versioned ruleset schema with symbolic economy configuration and no launch coin values.                       | Invalid phases, durations, roster sizes, and economy relationships are rejected. |
 | M2.3 — Complete | Create the OpenAPI 3.1 document with health, error, pagination, idempotency, and authentication conventions.             | OpenAPI lint passes and generated sample clients compile.                        |
-| M2.4            | Define the WebSocket event envelope, audiences, cursor, match version, and protocol error schema.                        | JSON Schema accepts valid fixtures and rejects hidden or malformed fields.       |
+| M2.4 — Complete | Define the WebSocket event envelope, audiences, cursor, match version, and protocol error schema.                        | JSON Schema accepts valid fixtures and rejects hidden or malformed fields.       |
 | M2.5            | Add contract compatibility checks that detect breaking changes.                                                          | A deliberately breaking fixture fails the compatibility check.                   |
 
 **Exit gate:** HTTP and real-time conventions exist before feature endpoints, and domain code has no wall-clock or random global dependency.
@@ -338,16 +338,15 @@ This is post-MVP and begins only after iOS retention validates further investmen
 
 ## 22. Immediate next chunk
 
-The next implementation chunk is **M2.4 — WebSocket event envelope**.
+The next implementation chunk is **M2.5 — Contract compatibility checks**.
 
 It should create only:
 
-- A versioned JSON Schema for the server-to-client event envelope
-- Explicit player, participants, active, and moderator audiences
-- Recipient cursor, match version, canonical timestamp, and identifier fields
-- A versioned protocol-error schema that is safe to send to clients
-- Valid and invalid fixtures, including private-field leakage cases
+- Checked-in compatibility baselines for the current OpenAPI and real-time
+  schemas
+- An automated comparison that fails on breaking removals or narrowing changes
+- A deliberately breaking fixture proving the comparison fails
+- A repository command suitable for local verification and CI
 
-It must not yet open WebSocket connections, publish domain events, implement
-snapshots, add feature payloads, persist cursors, or add game behavior. Those
-belong to later chunks.
+It must not add feature endpoints or event payloads, open WebSocket
+connections, publish events, or implement application behavior.

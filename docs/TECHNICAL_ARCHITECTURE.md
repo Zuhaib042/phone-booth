@@ -487,12 +487,14 @@ The selected host must support long-lived secure WebSockets. Connections must st
 ```json
 {
   "schemaVersion": 1,
-  "eventId": "01J...",
-  "type": "bribe.offer.accepted",
+  "eventId": "019b1000-0000-7000-8000-000000000001",
+  "type": "round.phase.changed",
   "occurredAt": "2026-07-20T12:34:56.789Z",
-  "matchId": "01J...",
+  "matchId": "019b1000-0000-7000-8000-000000000100",
   "matchVersion": 42,
   "recipientCursor": 815,
+  "audience": "player",
+  "recipientUserId": "019b1000-0000-7000-8000-000000000200",
   "payload": {}
 }
 ```
@@ -504,7 +506,18 @@ Every event declares an audience:
 - `active`: safe only for active contestants
 - `moderator`: internal evidence only
 
+Event and entity identifiers are RFC 9562 UUIDs. `matchVersion` is the
+positive, authoritative sequence of committed match state. `recipientCursor`
+is the positive delivery sequence for the receiving stream and is not a
+global event offset. A `player` event requires its one `recipientUserId`;
+broader audiences must omit that field.
+
 There is no generic broadcast of a domain record. A projection layer creates an audience-safe payload, and contract tests assert that ballot targets, private messages, offers, wallet details, device information, and moderation data never appear in broader events.
+
+Protocol errors use a separate versioned envelope with stable machine-readable
+codes. They contain no free-form server message or arbitrary details. Each code
+permits only its bounded recovery field: expected schema version, retry delay,
+or resume cursor.
 
 ### 9.3 Snapshots
 

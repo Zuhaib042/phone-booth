@@ -30,12 +30,16 @@ let package = Package(
             path: ".",
             exclude: [
                 "README.md",
+                "dist",
                 "generated",
                 "node_modules",
                 "openapi-ts.config.mjs",
                 "package.json",
                 "redocly.yaml",
+                "src",
+                "test",
                 "test-clients/typescript",
+                "tsconfig.json",
             ],
             sources: [
                 "test-clients/swift/ContractClientSmoke.swift",

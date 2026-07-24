@@ -35,6 +35,13 @@ importers:
         version: 24.13.3
 
   packages/contracts:
+    dependencies:
+      '@project-booth/domain':
+        specifier: workspace:*
+        version: link:../domain
+      ajv:
+        specifier: 8.20.0
+        version: 8.20.0
     devDependencies:
       '@hey-api/openapi-ts':
         specifier: 0.99.0
@@ -42,6 +49,9 @@ importers:
       '@redocly/cli':
         specifier: 2.40.0
         version: 2.40.0
+      '@types/node':
+        specifier: 24.13.3
+        version: 24.13.3
       typescript:
         specifier: 6.0.3
         version: 6.0.3
