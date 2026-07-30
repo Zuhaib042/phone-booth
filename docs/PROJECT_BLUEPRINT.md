@@ -14,9 +14,9 @@ Only one chunk is active at a time. Finishing a milestone does not authorize sta
 
 ### Current execution status
 
-- Completed: M0.1–M0.3, M1.1–M1.7, M2.1–M2.5, M3.1–M3.8, and M4.1–M4.7
+- Completed: M0.1–M0.3, M1.1–M1.7, M2.1–M2.5, M3.1–M3.8, M4.1–M4.7, and M5.1–M5.6
 - Active: none
-- Next: M5.1 — Development-only identity provider
+- Next: M6.1 — Matchmaking ticket commands
 - Last verified: 2026-07-30 with Node.js 24 LTS, pnpm 11, and Swift 6.3
 
 ## 2. Chunk rules
@@ -166,14 +166,14 @@ flowchart LR
 
 ## 10. M5 — Identity, accounts, and profiles
 
-| Chunk | Concise change                                                             | Verification                                                                 |
-| ----- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| M5.1  | Add a development-only identity provider behind an environment guard.      | Production configuration cannot enable development authentication.           |
-| M5.2  | Add users, provider identities, sessions, and device records.              | Identity linking cannot create duplicate internal users.                     |
-| M5.3  | Implement Sign in with Apple credential verification and account creation. | Valid, expired, wrong-audience, and replayed credential tests pass.          |
-| M5.4  | Issue short-lived access tokens and rotating refresh tokens.               | Rotation, revocation, reuse detection, and logout tests pass.                |
-| M5.5  | Add pseudonymous profiles and display-name filtering.                      | Unsafe names are rejected; public projection excludes private identity data. |
-| M5.6  | Add account deletion request and asynchronous cleanup state.               | Deleted accounts lose sessions and no longer enter matchmaking.              |
+| Chunk           | Concise change                                                             | Verification                                                                 |
+| --------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| M5.1 — Complete | Add a development-only identity provider behind an environment guard.      | Production configuration cannot enable development authentication.           |
+| M5.2 — Complete | Add users, provider identities, sessions, and device records.              | Identity linking cannot create duplicate internal users.                     |
+| M5.3 — Complete | Implement Sign in with Apple credential verification and account creation. | Valid, expired, wrong-audience, and replayed credential tests pass.          |
+| M5.4 — Complete | Issue short-lived access tokens and rotating refresh tokens.               | Rotation, revocation, reuse detection, and logout tests pass.                |
+| M5.5 — Complete | Add pseudonymous profiles and display-name filtering.                      | Unsafe names are rejected; public projection excludes private identity data. |
+| M5.6 — Complete | Add account deletion request and asynchronous cleanup state.               | Deleted accounts lose sessions and no longer enter matchmaking.              |
 
 **Exit gate:** Every player has one platform-neutral account, and no game endpoint trusts an Apple identifier directly.
 
@@ -338,15 +338,14 @@ This is post-MVP and begins only after iOS retention validates further investmen
 
 ## 22. Immediate next chunk
 
-The next implementation chunk is **M5.1 — Development-only identity
-provider**.
+The next implementation chunk is **M6.1 — Matchmaking ticket commands**.
 
 It should create only:
 
-- An identity-provider interface at the authentication boundary
-- A development implementation guarded by an explicit environment setting
-- Startup validation that prevents development authentication in production
-- Focused configuration and provider tests
+- Contract-first create, inspect, and cancel matchmaking-ticket operations
+- Durable ticket state scoped to an authenticated internal account
+- Idempotent duplicate creation and cancellation behavior
+- Focused command, race, and persistence tests
 
-It must not implement Sign in with Apple, sessions, refresh tokens, profiles,
-or product authentication routes.
+It must not implement Valkey queue grouping, ready confirmation, match
+creation, WebSockets, or event fan-out.

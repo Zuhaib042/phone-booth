@@ -1,7 +1,19 @@
 import type { FastifyInstance } from "fastify";
+import type { Pool } from "pg";
 
 import { buildApi } from "./app.js";
-import { loadApiConfig, type ApiConfig, type Environment } from "./config.js";
+import {
+  loadApiConfig,
+  loadIdentityConfig,
+  loadPostgresConfig,
+  type ApiConfig,
+  type Environment,
+} from "./config.js";
+import { createIdentityProvider } from "./identity/provider.js";
+import { PostgresIdentityService } from "./identity/service.js";
+import { createDatabasePool } from "./persistence/database.js";
+import { runMigrations } from "./persistence/migrations.js";
+import { PostgresTransactionRunner } from "./persistence/transaction.js";
 import {
   subscribeToShutdownSignals,
   type ShutdownSignal,
@@ -82,7 +94,35 @@ export async function startApi(
   environment: Environment = process.env,
 ): Promise<RunningApi> {
   const config = loadApiConfig(environment);
-  const api = buildApi(config);
+  const identityConfig = loadIdentityConfig(environment);
+  let pool: Pool | undefined;
+  let identityService: PostgresIdentityService | undefined;
+
+  if (identityConfig.provider !== "disabled") {
+    pool = createDatabasePool({
+      applicationName: "project-booth-api",
+      connectionString: loadPostgresConfig(environment).databaseUrl,
+    });
+    try {
+      await runMigrations(pool);
+      identityService = new PostgresIdentityService(
+        new PostgresTransactionRunner(pool),
+        createIdentityProvider(identityConfig),
+        identityConfig,
+      );
+    } catch (error: unknown) {
+      await pool.end().catch(() => undefined);
+      throw error;
+    }
+  }
+
+  const api = buildApi(
+    config,
+    identityService === undefined ? {} : { identityService },
+  );
+  if (pool !== undefined) {
+    api.addHook("onClose", async () => pool.end());
+  }
 
   try {
     await api.listen({ host: config.host, port: config.port });

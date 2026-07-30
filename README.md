@@ -56,8 +56,10 @@ Current boundaries:
 - `infra/` — provider-neutral infrastructure definitions
 - `tests/` — cross-package integration, concurrency, load, and end-to-end tests
 
-The current API exposes `GET /health/live`. Backend environment variables and
-package commands are documented in
+The API exposes `GET /health/live` plus versioned identity, account, and
+pseudonymous-profile routes under `/v1`. Identity is disabled unless an
+environment selects the guarded development provider or configures Sign in
+with Apple. Backend environment variables and package commands are documented in
 [services/backend/README.md](services/backend/README.md). The versioned HTTP
 contract and its generation checks are documented in
 [packages/contracts/README.md](packages/contracts/README.md).

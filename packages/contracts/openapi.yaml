@@ -9,10 +9,10 @@ info:
     liveness remains at the unversioned `/health/live` path so container
     orchestration does not depend on a product API version.
 
-    Authentication, error, pagination, and idempotency components in this
-    baseline define conventions for future endpoints; they do not implement
-    authentication or feature behavior.
-  version: 0.1.0
+    Identity endpoints exchange provider credentials for Project Booth
+    sessions. Game endpoints trust only the resulting internal account and
+    never a platform-provider identifier.
+  version: 0.2.0
 
 x-project-booth-api-conventions:
   contractVersion: 1
@@ -37,6 +37,12 @@ servers:
 tags:
   - name: Health
     description: Operational process-health endpoints.
+  - name: Identity
+    description: Provider credential exchange and session lifecycle.
+  - name: Account
+    description: Private account state and deletion.
+  - name: Profile
+    description: Pseudonymous player profiles.
 
 security:
   - bearerAuth: []
@@ -64,6 +70,176 @@ paths:
                   summary: Live API process
                   value:
                     status: ok
+
+  /v1/auth/exchange:
+    post:
+      tags:
+        - Identity
+      summary: Exchange an identity-provider credential
+      operationId: exchangeIdentityCredential
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExchangeCredentialRequest"
+      responses:
+        "201":
+          description: The credential was verified and a session was created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExchangeCredentialResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /v1/auth/refresh:
+    post:
+      tags:
+        - Identity
+      summary: Rotate a refresh token
+      operationId: refreshIdentitySession
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshSessionRequest"
+      responses:
+        "200":
+          description: A fresh access and refresh token pair.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenPair"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /v1/auth/logout:
+    post:
+      tags:
+        - Identity
+      summary: Revoke the current session
+      operationId: logoutIdentitySession
+      responses:
+        "204":
+          description: The current session was revoked.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /v1/account:
+    get:
+      tags:
+        - Account
+      summary: Get the current private account projection
+      operationId: getCurrentAccount
+      responses:
+        "200":
+          description: Current account state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Account"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+    delete:
+      tags:
+        - Account
+      summary: Request account deletion
+      description: |
+        Immediately revokes every account session and queues asynchronous
+        identity and profile cleanup. A retained internal tombstone preserves
+        referential integrity for match and safety history.
+      operationId: requestAccountDeletion
+      responses:
+        "202":
+          description: Deletion is pending or was already completed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountDeletionAccepted"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /v1/profile:
+    patch:
+      tags:
+        - Profile
+      summary: Update the current pseudonymous profile
+      operationId: updateCurrentProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileRequest"
+      responses:
+        "200":
+          description: Updated public profile.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicProfile"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /v1/profiles/{userId}:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        description: Internal Project Booth player identifier.
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags:
+        - Profile
+      summary: Get a match-safe public profile
+      operationId: getPublicProfile
+      responses:
+        "200":
+          description: Match-safe pseudonymous profile.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
 
 components:
   securitySchemes:
@@ -138,6 +314,173 @@ components:
           type: string
           const: ok
           description: Stable liveness status.
+
+    DeviceRegistration:
+      type: object
+      additionalProperties: false
+      required:
+        - installationId
+        - platform
+      properties:
+        installationId:
+          type: string
+          format: uuid
+          description: App-installation identifier, not a hardware identifier.
+        platform:
+          type: string
+          enum:
+            - ios
+            - test
+        appVersion:
+          type: string
+          minLength: 1
+          maxLength: 64
+
+    ExchangeCredentialRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - credential
+        - device
+      properties:
+        credential:
+          type: string
+          minLength: 1
+          maxLength: 8192
+          description: |
+            Provider credential selected by the server environment. Production
+            Apple credentials are verified against Apple's signing keys.
+        nonce:
+          type: string
+          minLength: 1
+          maxLength: 128
+        device:
+          $ref: "#/components/schemas/DeviceRegistration"
+
+    RefreshSessionRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - refreshToken
+      properties:
+        refreshToken:
+          type: string
+          minLength: 1
+          maxLength: 256
+
+    TokenPair:
+      type: object
+      additionalProperties: false
+      required:
+        - accessToken
+        - accessTokenExpiresAt
+        - refreshToken
+        - refreshTokenExpiresAt
+        - tokenType
+      properties:
+        accessToken:
+          type: string
+          minLength: 1
+          maxLength: 256
+        accessTokenExpiresAt:
+          type: string
+          format: date-time
+        refreshToken:
+          type: string
+          minLength: 1
+          maxLength: 256
+        refreshTokenExpiresAt:
+          type: string
+          format: date-time
+        tokenType:
+          type: string
+          const: Bearer
+
+    PublicProfile:
+      type: object
+      additionalProperties: false
+      required:
+        - userId
+        - displayName
+        - avatarKey
+        - progressionLevel
+      properties:
+        userId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+          minLength: 3
+          maxLength: 24
+        avatarKey:
+          type: string
+          minLength: 1
+          maxLength: 64
+        progressionLevel:
+          type: integer
+          minimum: 1
+
+    Account:
+      type: object
+      additionalProperties: false
+      required:
+        - userId
+        - status
+        - deletionStatus
+        - profile
+      properties:
+        userId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+            - active
+            - deletion_pending
+            - deleted
+        deletionStatus:
+          type: string
+          enum:
+            - none
+            - pending
+            - completed
+        profile:
+          $ref: "#/components/schemas/PublicProfile"
+
+    ExchangeCredentialResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - account
+        - tokens
+      properties:
+        account:
+          $ref: "#/components/schemas/Account"
+        tokens:
+          $ref: "#/components/schemas/TokenPair"
+
+    UpdateProfileRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - displayName
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 128
+
+    AccountDeletionAccepted:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum:
+            - pending
+            - completed
 
     ErrorResponse:
       type: object
@@ -243,6 +586,24 @@ components:
             $ref: "#/components/schemas/ErrorResponse"
     InternalServerError:
       description: The server could not safely complete the request.
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/RequestId"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: The requested account or profile does not exist.
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/RequestId"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    ServiceUnavailable:
+      description: Identity services are unavailable or not configured.
       headers:
         X-Request-Id:
           $ref: "#/components/headers/RequestId"

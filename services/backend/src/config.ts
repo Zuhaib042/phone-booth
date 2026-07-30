@@ -8,9 +8,11 @@ const LOG_LEVELS = [
   "trace",
   "silent",
 ] as const;
+const IDENTITY_PROVIDERS = ["disabled", "development", "apple"] as const;
 
 export type NodeEnvironment = (typeof NODE_ENVIRONMENTS)[number];
 export type LogLevel = (typeof LOG_LEVELS)[number];
+export type IdentityProviderName = (typeof IDENTITY_PROVIDERS)[number];
 
 export interface RuntimeConfig {
   readonly logLevel: LogLevel;
@@ -41,6 +43,24 @@ export interface DatastoreConfig {
 export interface PostgresConfig {
   readonly databaseUrl: string;
 }
+
+interface IdentityConfigBase {
+  readonly accessTokenTtlSeconds: number;
+  readonly accountDeletionDelaySeconds: number;
+  readonly refreshTokenTtlSeconds: number;
+}
+
+export type IdentityConfig =
+  | (IdentityConfigBase & {
+      readonly provider: "disabled";
+    })
+  | (IdentityConfigBase & {
+      readonly provider: "development";
+    })
+  | (IdentityConfigBase & {
+      readonly appleClientId: string;
+      readonly provider: "apple";
+    });
 
 export type Environment = Readonly<Record<string, string | undefined>>;
 
@@ -195,6 +215,62 @@ export function loadPostgresConfig(
       "postgresql:",
     ]),
   };
+}
+
+export function loadIdentityConfig(
+  environment: Environment = process.env,
+): IdentityConfig {
+  const { nodeEnvironment } = loadRuntimeConfig(environment);
+  const provider = readChoice(
+    environment,
+    "IDENTITY_PROVIDER",
+    "disabled",
+    IDENTITY_PROVIDERS,
+  );
+  const accessTokenTtlSeconds = readInteger(
+    environment,
+    "ACCESS_TOKEN_TTL_SECONDS",
+    900,
+    60,
+    3_600,
+  );
+  const refreshTokenTtlSeconds = readInteger(
+    environment,
+    "REFRESH_TOKEN_TTL_SECONDS",
+    2_592_000,
+    3_600,
+    7_776_000,
+  );
+  if (refreshTokenTtlSeconds <= accessTokenTtlSeconds) {
+    throw new ConfigError(
+      "REFRESH_TOKEN_TTL_SECONDS must be greater than ACCESS_TOKEN_TTL_SECONDS",
+    );
+  }
+  const common = {
+    accessTokenTtlSeconds,
+    accountDeletionDelaySeconds: readInteger(
+      environment,
+      "ACCOUNT_DELETION_DELAY_SECONDS",
+      0,
+      0,
+      604_800,
+    ),
+    refreshTokenTtlSeconds,
+  };
+
+  if (provider === "development" && nodeEnvironment === "production") {
+    throw new ConfigError(
+      "IDENTITY_PROVIDER=development is forbidden when NODE_ENV=production",
+    );
+  }
+  if (provider === "apple") {
+    return {
+      ...common,
+      appleClientId: readNonEmpty(environment, "APPLE_CLIENT_ID", ""),
+      provider,
+    };
+  }
+  return { ...common, provider };
 }
 
 export function loadWorkerConfig(

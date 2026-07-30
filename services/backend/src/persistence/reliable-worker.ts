@@ -5,6 +5,10 @@ import { Redis as Valkey } from "iovalkey";
 import type { Logger } from "pino";
 
 import type { DatastoreConfig, ReliableJobConfig } from "../config.js";
+import {
+  ACCOUNT_DELETION_JOB_KIND,
+  AccountDeletionHandler,
+} from "../identity/service.js";
 import type { WorkerJob } from "../worker.js";
 import { createDatabasePool } from "./database.js";
 import { MatchDeadlineHandler } from "./deadline-handler.js";
@@ -17,6 +21,7 @@ import {
 } from "./outbox.js";
 import { MatchRecoveryService } from "./recovery.js";
 import {
+  MATCH_DEADLINE_JOB_KIND,
   PostgresScheduledJobRepository,
   ScheduledJobProcessor,
 } from "./scheduled-jobs.js";
@@ -152,6 +157,7 @@ export class ReliablePostgresWorkerJob implements WorkerJob {
         outboxRepository,
         scheduledRepository,
       );
+      const accountDeletionHandler = new AccountDeletionHandler();
       const recovery = new MatchRecoveryService(
         transactions,
         undefined,
@@ -174,8 +180,15 @@ export class ReliablePostgresWorkerJob implements WorkerJob {
         new ScheduledJobProcessor(
           transactions,
           scheduledRepository,
-          (client, job, occurredAt) =>
-            deadlineHandler.handle(client, job, occurredAt),
+          (client, job, occurredAt) => {
+            if (job.kind === MATCH_DEADLINE_JOB_KIND) {
+              return deadlineHandler.handle(client, job, occurredAt);
+            }
+            if (job.kind === ACCOUNT_DELETION_JOB_KIND) {
+              return accountDeletionHandler.handle(client, job, occurredAt);
+            }
+            throw new Error(`Unsupported scheduled job kind: ${job.kind}`);
+          },
         ),
       );
       this.loop.start();

@@ -169,6 +169,7 @@ test(
       assert.deepEqual(firstMigration.applied, [
         "0001_m4_persistence.sql",
         "0002_immutable_rulesets.sql",
+        "0003_m5_identity_accounts_profiles.sql",
       ]);
       assert.deepEqual(firstMigration.pending, []);
       assert.deepEqual(secondMigration.pending, []);
@@ -184,15 +185,22 @@ test(
       assert.deepEqual(
         tables.rows.map(({ table_name }) => table_name),
         [
+          "account_deletion_requests",
+          "devices",
           "idempotency_keys",
           "match_events",
           "match_players",
           "matches",
           "outbox_events",
+          "profiles",
+          "provider_credentials",
           "rounds",
           "rulesets",
           "scheduled_jobs",
           "schema_migrations",
+          "session_refresh_tokens",
+          "sessions",
+          "user_identities",
           "users",
         ],
       );

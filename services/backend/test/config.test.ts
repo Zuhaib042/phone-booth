@@ -5,6 +5,7 @@ import {
   ConfigError,
   loadApiConfig,
   loadDatastoreConfig,
+  loadIdentityConfig,
   loadReliableJobConfig,
   loadWorkerConfig,
 } from "../src/config.js";
@@ -117,5 +118,72 @@ test("loadReliableJobConfig validates bounded polling settings", () => {
     (error: unknown) =>
       error instanceof ConfigError &&
       error.message.startsWith("WORKER_LEASE_MS"),
+  );
+});
+
+test("loadIdentityConfig guards development auth from production", () => {
+  assert.deepEqual(
+    loadIdentityConfig({
+      IDENTITY_PROVIDER: "development",
+      NODE_ENV: "development",
+    }),
+    {
+      accessTokenTtlSeconds: 900,
+      accountDeletionDelaySeconds: 0,
+      provider: "development",
+      refreshTokenTtlSeconds: 2_592_000,
+    },
+  );
+  assert.throws(
+    () =>
+      loadIdentityConfig({
+        IDENTITY_PROVIDER: "development",
+        NODE_ENV: "production",
+      }),
+    (error: unknown) =>
+      error instanceof ConfigError &&
+      error.message ===
+        "IDENTITY_PROVIDER=development is forbidden when NODE_ENV=production",
+  );
+});
+
+test("loadIdentityConfig requires the Apple audience and bounds lifetimes", () => {
+  assert.deepEqual(
+    loadIdentityConfig({
+      ACCESS_TOKEN_TTL_SECONDS: "600",
+      APPLE_CLIENT_ID: "com.example.project-booth",
+      IDENTITY_PROVIDER: "apple",
+      REFRESH_TOKEN_TTL_SECONDS: "86400",
+    }),
+    {
+      accessTokenTtlSeconds: 600,
+      accountDeletionDelaySeconds: 0,
+      appleClientId: "com.example.project-booth",
+      provider: "apple",
+      refreshTokenTtlSeconds: 86_400,
+    },
+  );
+  assert.throws(
+    () => loadIdentityConfig({ IDENTITY_PROVIDER: "apple" }),
+    (error: unknown) =>
+      error instanceof ConfigError &&
+      error.message === "APPLE_CLIENT_ID must not be empty",
+  );
+  assert.throws(
+    () => loadIdentityConfig({ ACCESS_TOKEN_TTL_SECONDS: "59" }),
+    (error: unknown) =>
+      error instanceof ConfigError &&
+      error.message.startsWith("ACCESS_TOKEN_TTL_SECONDS"),
+  );
+  assert.throws(
+    () =>
+      loadIdentityConfig({
+        ACCESS_TOKEN_TTL_SECONDS: "3600",
+        REFRESH_TOKEN_TTL_SECONDS: "3600",
+      }),
+    (error: unknown) =>
+      error instanceof ConfigError &&
+      error.message ===
+        "REFRESH_TOKEN_TTL_SECONDS must be greater than ACCESS_TOKEN_TTL_SECONDS",
   );
 });

@@ -4,19 +4,24 @@ The backend package contains the Project Booth Fastify API and worker processes.
 
 ## Environment
 
-| Variable                  |                           Default | Accepted values                                                    |
-| ------------------------- | --------------------------------: | ------------------------------------------------------------------ |
-| `HOST`                    |                         `0.0.0.0` | Any non-empty bind host                                            |
-| `PORT`                    |                            `3000` | Integer from `0` to `65535`; use `0` only for ephemeral test ports |
-| `NODE_ENV`                |                     `development` | `development`, `test`, or `production`                             |
-| `LOG_LEVEL`               |                            `info` | `fatal`, `error`, `warn`, `info`, `debug`, `trace`, or `silent`    |
-| `DATABASE_URL`            |   Required for datastore commands | `postgres:` or `postgresql:` connection URL                        |
-| `VALKEY_URL`              |   Required for datastore commands | `redis:` or `rediss:` connection URL                               |
-| `WORKER_READY_FILE`       | `/tmp/project-booth-worker-ready` | Any non-empty worker-writable path                                 |
-| `WORKER_BATCH_SIZE`       |                              `25` | Integer from `1` to `100`                                          |
-| `WORKER_LEASE_MS`         |                           `30000` | Integer from `1000` to `300000`                                    |
-| `WORKER_POLL_INTERVAL_MS` |                             `250` | Integer from `25` to `60000`                                       |
-| `OUTBOX_CHANNEL`          |            `project-booth:events` | Any non-empty Valkey publish channel                               |
+| Variable                         |                           Default | Accepted values                                                    |
+| -------------------------------- | --------------------------------: | ------------------------------------------------------------------ |
+| `HOST`                           |                         `0.0.0.0` | Any non-empty bind host                                            |
+| `PORT`                           |                            `3000` | Integer from `0` to `65535`; use `0` only for ephemeral test ports |
+| `NODE_ENV`                       |                     `development` | `development`, `test`, or `production`                             |
+| `LOG_LEVEL`                      |                            `info` | `fatal`, `error`, `warn`, `info`, `debug`, `trace`, or `silent`    |
+| `DATABASE_URL`                   |   Required for datastore commands | `postgres:` or `postgresql:` connection URL                        |
+| `VALKEY_URL`                     |   Required for datastore commands | `redis:` or `rediss:` connection URL                               |
+| `WORKER_READY_FILE`              | `/tmp/project-booth-worker-ready` | Any non-empty worker-writable path                                 |
+| `WORKER_BATCH_SIZE`              |                              `25` | Integer from `1` to `100`                                          |
+| `WORKER_LEASE_MS`                |                           `30000` | Integer from `1000` to `300000`                                    |
+| `WORKER_POLL_INTERVAL_MS`        |                             `250` | Integer from `25` to `60000`                                       |
+| `OUTBOX_CHANNEL`                 |            `project-booth:events` | Any non-empty Valkey publish channel                               |
+| `IDENTITY_PROVIDER`              |                        `disabled` | `disabled`, `development`, or `apple`                              |
+| `APPLE_CLIENT_ID`                |           Required for Apple auth | Sign in with Apple service identifier / token audience             |
+| `ACCESS_TOKEN_TTL_SECONDS`       |                             `900` | Integer from `60` to `3600`                                        |
+| `REFRESH_TOKEN_TTL_SECONDS`      |                         `2592000` | Integer from `3600` to `7776000`                                   |
+| `ACCOUNT_DELETION_DELAY_SECONDS` |                               `0` | Integer from `0` to `604800`                                       |
 
 ## Commands
 
@@ -34,6 +39,24 @@ pnpm --filter @project-booth/backend test
 
 The liveness endpoint is `GET /health/live`. `SIGINT` and `SIGTERM` stop the
 HTTP listener gracefully.
+
+## Identity and profiles
+
+`IDENTITY_PROVIDER=development` accepts explicit `dev:<subject>` credentials
+only when `NODE_ENV` is `development` or `test`; startup rejects that provider
+in production. `IDENTITY_PROVIDER=apple` requires `APPLE_CLIENT_ID` and verifies
+RS256 identity tokens against Apple's published keys, issuer, audience,
+lifetime, and optional nonce.
+
+The API stores only hashes of opaque access and refresh tokens. Refresh tokens
+rotate on every use; reuse of an already rotated token revokes every session for
+the account. Public profiles expose only the internal user ID, filtered display
+name, avatar key, and progression level.
+
+`DELETE /v1/account` immediately marks the account ineligible, revokes its
+sessions, and schedules worker cleanup. Cleanup removes provider identities,
+devices, sessions, and the profile while retaining a deleted user tombstone for
+durable match-history references.
 
 ## PostgreSQL persistence
 
