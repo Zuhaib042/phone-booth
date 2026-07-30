@@ -80,6 +80,41 @@ export interface TieResolution {
   readonly randomSample: number | null;
 }
 
+export interface CompletedRound {
+  readonly normalBallots: readonly NormalBallot[];
+  readonly automaticSelfVotes: readonly AutomaticSelfVote[];
+  readonly normalVoteTotals: readonly EliminationVoteTotal[];
+  readonly runoffPlayerIds: readonly UserId[];
+  readonly runoffBallots: readonly RunoffBallot[];
+  readonly runoffVoteTotals: readonly EliminationVoteTotal[];
+  readonly eliminatedPlayerId: UserId;
+  readonly tieResolutionMethod: TieResolutionMethod | null;
+}
+
+export interface FinalPlea {
+  readonly playerId: UserId;
+  readonly text: string;
+  readonly submittedAt: UtcTimestamp;
+}
+
+export interface JuryBallot {
+  readonly jurorId: UserId;
+  readonly finalistId: UserId;
+  readonly revision: number;
+  readonly submittedAt: UtcTimestamp;
+}
+
+export type JuryResolutionMethod =
+  "jury_vote" | "cumulative_votes" | "missed_ballots" | "random_draw";
+
+export interface JuryResult {
+  readonly voteTotals: readonly EliminationVoteTotal[];
+  readonly resolutionCandidatePlayerIds: readonly UserId[];
+  readonly winnerPlayerId: UserId;
+  readonly method: JuryResolutionMethod;
+  readonly randomSample: number | null;
+}
+
 export interface MatchState {
   readonly matchId: MatchId;
   readonly version: MatchVersion;
@@ -95,6 +130,11 @@ export interface MatchState {
   readonly runoffPlayerIds: readonly UserId[];
   readonly runoffBallots: readonly RunoffBallot[];
   readonly tieResolution: TieResolution | null;
+  readonly completedRounds: readonly CompletedRound[];
+  readonly finalPleas: readonly FinalPlea[];
+  readonly juryBallots: readonly JuryBallot[];
+  readonly juryResult: JuryResult | null;
+  readonly winnerPlayerId: UserId | null;
 }
 
 export interface CreateMatchStateInput {
@@ -191,6 +231,11 @@ export function createMatchState(
       runoffPlayerIds: Object.freeze([]),
       runoffBallots: Object.freeze([]),
       tieResolution: null,
+      completedRounds: Object.freeze([]),
+      finalPleas: Object.freeze([]),
+      juryBallots: Object.freeze([]),
+      juryResult: null,
+      winnerPlayerId: null,
     }),
   );
 }

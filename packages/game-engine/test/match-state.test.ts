@@ -13,14 +13,19 @@ import {
 } from "@project-booth/domain";
 
 import {
+  applyFinaleCommand,
   applyLobbyCommand,
   applyRoundCommand,
   applyRunoffCommand,
   applyTallyCommand,
+  createDossierProjection,
   createMatchState,
+  simulateHeadlessMatch,
   INITIAL_MATCH_VERSION,
   type LobbyTransition,
   type MatchState,
+  type FinaleTransition,
+  type DossierDealRecord,
   type RoundTransition,
   type RunoffTransition,
   type TallyTransition,
@@ -163,6 +168,11 @@ test("constructs the documented immutable initial match state", () => {
   assert.deepEqual(result.value.runoffPlayerIds, []);
   assert.deepEqual(result.value.runoffBallots, []);
   assert.equal(result.value.tieResolution, null);
+  assert.deepEqual(result.value.completedRounds, []);
+  assert.deepEqual(result.value.finalPleas, []);
+  assert.deepEqual(result.value.juryBallots, []);
+  assert.equal(result.value.juryResult, null);
+  assert.equal(result.value.winnerPlayerId, null);
   assert.deepEqual(
     result.value.roster.map(({ playerId, status }) => ({ playerId, status })),
     playerIds.map((playerId) => ({ playerId, status: "active" })),
@@ -971,4 +981,508 @@ test("an all-player tie skips runoff and uses the same fallback order", () => {
   assert.deepEqual(random.state.tieResolution?.runoffVoteTotals, []);
   assert.equal(cumulative.state.tieResolution?.method, "cumulative_votes");
   assert.equal(cumulative.state.tieResolution?.eliminatedPlayerId, player(4));
+});
+
+function finalEliminationState(): MatchState {
+  const negotiation = negotiationState();
+  const reduced = Object.freeze({
+    ...negotiation,
+    roster: Object.freeze(
+      negotiation.roster.map((entry, index) =>
+        index < 3
+          ? Object.freeze({ ...entry, status: "eliminated" as const })
+          : entry,
+      ),
+    ),
+  });
+  let state = success(
+    applyRoundCommand(reduced, {
+      type: "negotiation_timed_out",
+      occurredAt: reduced.phaseDeadline as UtcTimestamp,
+    }),
+  ).state;
+  state = submitBallot(state, player(3), player(4)).state;
+  state = submitBallot(state, player(4), player(3)).state;
+  state = submitBallot(state, player(5), player(3)).state;
+  return tally(state).state;
+}
+
+function finalPleaState(): MatchState {
+  const elimination = finalEliminationState();
+  return success(
+    applyFinaleCommand(elimination, {
+      type: "elimination_reveal_timed_out",
+      occurredAt: elimination.phaseDeadline as UtcTimestamp,
+    }),
+  ).state;
+}
+
+function juryVotingState(): MatchState {
+  let state = finalPleaState();
+  for (const [playerIndex, text] of [
+    [4, "Keep me in the booth."],
+    [5, "My game deserves the win."],
+  ] as const) {
+    state = success(
+      applyFinaleCommand(state, {
+        type: "final_plea_submitted",
+        playerId: player(playerIndex),
+        text,
+        occurredAt: timestamp(`2026-07-24T12:02:${playerIndex + 46}.000Z`),
+      }),
+    ).state;
+  }
+  return state;
+}
+
+function submitJuryBallot(
+  state: MatchState,
+  jurorIndex: number,
+  finalistIndex: number,
+): FinaleTransition {
+  return success(
+    applyFinaleCommand(state, {
+      type: "jury_ballot_submitted",
+      jurorId: player(jurorIndex),
+      finalistId: player(finalistIndex),
+      occurredAt: timestamp("2026-07-24T12:03:00.000Z"),
+    }),
+  );
+}
+
+function withFinalistCumulative(
+  state: MatchState,
+  first: number,
+  second: number,
+): MatchState {
+  return Object.freeze({
+    ...state,
+    cumulativeEliminationVoteTotals: Object.freeze(
+      state.cumulativeEliminationVoteTotals.map((entry) =>
+        entry.playerId === player(4)
+          ? Object.freeze({ ...entry, votes: first })
+          : entry.playerId === player(5)
+            ? Object.freeze({ ...entry, votes: second })
+            : entry,
+      ),
+    ),
+  });
+}
+
+function tiedJuryState(): MatchState {
+  let state = juryVotingState();
+  for (const [juror, finalist] of [
+    [0, 4],
+    [1, 4],
+    [2, 5],
+    [3, 5],
+  ] as const) {
+    state = submitJuryBallot(state, juror, finalist).state;
+  }
+  return withFinalistCumulative(state, 0, 0);
+}
+
+test("elimination reveal archives the round and advances by active count", () => {
+  const firstElimination = tally(
+    closedVotingState(ballotTargets(1, 0, 0, 0, 1, 2)),
+  ).state;
+  const laterRound = success(
+    applyFinaleCommand(firstElimination, {
+      type: "elimination_reveal_timed_out",
+      occurredAt: firstElimination.phaseDeadline as UtcTimestamp,
+    }),
+  );
+  const finalists = finalPleaState();
+
+  assert.equal(laterRound.state.phase, "negotiation");
+  assert.equal(laterRound.state.phaseDeadline, "2026-07-24T12:04:10.000Z");
+  assert.equal(laterRound.state.completedRounds.length, 1);
+  assert.equal(
+    laterRound.state.completedRounds[0]?.eliminatedPlayerId,
+    player(0),
+  );
+  assert.equal(Object.isFrozen(laterRound.state.completedRounds), true);
+  assert.equal(Object.isFrozen(laterRound.state.completedRounds[0]), true);
+  assert.equal(finalists.phase, "final_plea");
+  assert.equal(finalists.phaseDeadline, "2026-07-24T12:03:40.000Z");
+  assert.deepEqual(
+    finalists.roster.flatMap(({ playerId, status }) =>
+      status === "active" ? [playerId] : [],
+    ),
+    [player(4), player(5)],
+  );
+});
+
+test("final pleas are private, revisable, bounded, and close into jury voting", () => {
+  const state = finalPleaState();
+  const first = success(
+    applyFinaleCommand(state, {
+      type: "final_plea_submitted",
+      playerId: player(4),
+      text: "First plea",
+      occurredAt: timestamp("2026-07-24T12:02:50.000Z"),
+    }),
+  );
+  const duplicate = success(
+    applyFinaleCommand(first.state, {
+      type: "final_plea_submitted",
+      playerId: player(4),
+      text: "First plea",
+      occurredAt: timestamp("2026-07-24T12:02:51.000Z"),
+    }),
+  );
+  const revised = success(
+    applyFinaleCommand(duplicate.state, {
+      type: "final_plea_submitted",
+      playerId: player(4),
+      text: "Final plea",
+      occurredAt: timestamp("2026-07-24T12:02:52.000Z"),
+    }),
+  );
+  const jury = success(
+    applyFinaleCommand(revised.state, {
+      type: "final_plea_submitted",
+      playerId: player(5),
+      text: "Other plea",
+      occurredAt: timestamp("2026-07-24T12:02:53.000Z"),
+    }),
+  );
+
+  assert.equal(duplicate.state, first.state);
+  assert.equal(revised.state.finalPleas[0]?.text, "Final plea");
+  assert.doesNotMatch(JSON.stringify(revised.events), /First plea|Final plea/);
+  assert.equal(jury.state.phase, "jury_voting");
+  assert.equal(jury.state.phaseDeadline, "2026-07-24T12:03:13.000Z");
+
+  const invalidCases = [
+    applyFinaleCommand(state, {
+      type: "final_plea_submitted",
+      playerId: player(0),
+      text: "Not a finalist",
+      occurredAt: timestamp("2026-07-24T12:02:50.000Z"),
+    }),
+    applyFinaleCommand(state, {
+      type: "final_plea_submitted",
+      playerId: player(4),
+      text: " ",
+      occurredAt: timestamp("2026-07-24T12:02:50.000Z"),
+    }),
+    applyFinaleCommand(state, {
+      type: "final_plea_submitted",
+      playerId: player(4),
+      text: "x".repeat(241),
+      occurredAt: timestamp("2026-07-24T12:02:50.000Z"),
+    }),
+  ];
+  assert.deepEqual(
+    invalidCases.map((result) =>
+      result.ok ? null : result.error.details.reason,
+    ),
+    ["finalist_not_eligible", "plea_empty", "plea_too_long"],
+  );
+});
+
+test("jury majority completes with one winner and hidden individual ballots", () => {
+  let state = juryVotingState();
+  for (const [juror, finalist] of [
+    [0, 4],
+    [1, 4],
+    [2, 4],
+    [3, 5],
+  ] as const) {
+    state = submitJuryBallot(state, juror, finalist).state;
+  }
+  const result = success(
+    applyFinaleCommand(state, {
+      type: "jury_tallied",
+      occurredAt: timestamp("2026-07-24T12:03:01.000Z"),
+    }),
+  );
+
+  assert.equal(result.state.phase, "complete");
+  assert.equal(result.state.phaseDeadline, null);
+  assert.equal(result.state.winnerPlayerId, player(4));
+  assert.equal(result.state.juryResult?.method, "jury_vote");
+  assert.deepEqual(
+    result.state.juryResult?.voteTotals.map(({ votes }) => votes),
+    [3, 1],
+  );
+  assert.doesNotMatch(
+    JSON.stringify(result.events[0]),
+    /"jurorId"|"finalistId"|"ballotTargetId"/,
+  );
+  assert.equal(Object.isFrozen(result.state.juryResult), true);
+});
+
+test("missing jurors are excluded when the jury deadline closes", () => {
+  let state = juryVotingState();
+  state = submitJuryBallot(state, 0, 4).state;
+  state = submitJuryBallot(state, 1, 4).state;
+  const result = success(
+    applyFinaleCommand(state, {
+      type: "jury_tallied",
+      occurredAt: state.phaseDeadline as UtcTimestamp,
+    }),
+  );
+
+  assert.equal(result.state.winnerPlayerId, player(4));
+  assert.deepEqual(
+    result.state.juryResult?.voteTotals.map(({ votes }) => votes),
+    [2, 0],
+  );
+});
+
+test("jury ties follow cumulative, missed-ballot, then random fallback", () => {
+  const tied = tiedJuryState();
+  const cumulativeState = withFinalistCumulative(tied, 1, 3);
+  const cumulative = success(
+    applyFinaleCommand(cumulativeState, {
+      type: "jury_tallied",
+      occurredAt: timestamp("2026-07-24T12:03:01.000Z"),
+    }),
+  );
+  const missedState = Object.freeze({
+    ...tied,
+    completedRounds: Object.freeze(
+      tied.completedRounds.map((round, index) =>
+        index === 0
+          ? Object.freeze({
+              ...round,
+              automaticSelfVotes: Object.freeze([
+                Object.freeze({
+                  playerId: player(5),
+                  reason: "missed_normal_ballot" as const,
+                }),
+              ]),
+            })
+          : round,
+      ),
+    ),
+  });
+  const missed = success(
+    applyFinaleCommand(missedState, {
+      type: "jury_tallied",
+      occurredAt: timestamp("2026-07-24T12:03:01.000Z"),
+    }),
+  );
+  const noVotes = withFinalistCumulative(juryVotingState(), 0, 0);
+  const random = success(
+    applyFinaleCommand(noVotes, {
+      type: "jury_tallied",
+      occurredAt: noVotes.phaseDeadline as UtcTimestamp,
+      randomSample: 0.75,
+    }),
+  );
+
+  assert.equal(cumulative.state.juryResult?.method, "cumulative_votes");
+  assert.equal(cumulative.state.winnerPlayerId, player(4));
+  assert.equal(missed.state.juryResult?.method, "missed_ballots");
+  assert.equal(missed.state.winnerPlayerId, player(4));
+  assert.equal(random.state.juryResult?.method, "random_draw");
+  assert.equal(random.state.winnerPlayerId, player(5));
+  assert.equal(random.state.juryResult?.randomSample, 0.75);
+});
+
+test("jury rejects ineligible actors, incomplete tallies, and unsafe samples", () => {
+  const state = juryVotingState();
+  const tied = tiedJuryState();
+  const cases = [
+    applyFinaleCommand(state, {
+      type: "jury_ballot_submitted",
+      jurorId: player(4),
+      finalistId: player(5),
+      occurredAt: timestamp("2026-07-24T12:03:00.000Z"),
+    }),
+    applyFinaleCommand(state, {
+      type: "jury_ballot_submitted",
+      jurorId: player(0),
+      finalistId: player(0),
+      occurredAt: timestamp("2026-07-24T12:03:00.000Z"),
+    }),
+    applyFinaleCommand(state, {
+      type: "jury_tallied",
+      occurredAt: timestamp("2026-07-24T12:03:00.000Z"),
+    }),
+    applyFinaleCommand(tied, {
+      type: "jury_tallied",
+      occurredAt: timestamp("2026-07-24T12:03:01.000Z"),
+    }),
+    applyFinaleCommand(tied, {
+      type: "jury_tallied",
+      occurredAt: timestamp("2026-07-24T12:03:01.000Z"),
+      randomSample: 1,
+    }),
+  ];
+  assert.deepEqual(
+    cases.map((result) => (result.ok ? null : result.error.details.reason)),
+    [
+      "juror_not_eligible",
+      "finalist_not_eligible",
+      "voting_incomplete",
+      "random_sample_required",
+      "invalid_random_sample",
+    ],
+  );
+});
+
+function completedMatchState(): MatchState {
+  let state = juryVotingState();
+  for (const [juror, finalist] of [
+    [0, 4],
+    [1, 4],
+    [2, 4],
+    [3, 5],
+  ] as const) {
+    state = submitJuryBallot(state, juror, finalist).state;
+  }
+  return success(
+    applyFinaleCommand(state, {
+      type: "jury_tallied",
+      occurredAt: timestamp("2026-07-24T12:03:01.000Z"),
+    }),
+  ).state;
+}
+
+test("completed participants receive an immutable dossier with hidden facts", () => {
+  const state = completedMatchState();
+  const deals: DossierDealRecord[] = [
+    {
+      senderPlayerId: player(0),
+      recipientPlayerId: player(4),
+      promisedTargetPlayerId: player(5),
+      outcome: "honored",
+    },
+    {
+      senderPlayerId: player(1),
+      recipientPlayerId: player(5),
+      promisedTargetPlayerId: player(4),
+      outcome: "betrayed",
+    },
+  ];
+  const first = success(
+    createDossierProjection(state, {
+      viewerPlayerId: player(0),
+      deals,
+    }),
+  );
+  const second = success(
+    createDossierProjection(state, {
+      viewerPlayerId: player(0),
+      deals,
+    }),
+  );
+
+  assert.deepEqual(first, second);
+  assert.equal(first.winnerPlayerId, player(4));
+  assert.deepEqual(first.eliminationOrder, [player(3)]);
+  assert.equal(first.rounds[0]?.normalBallots.length, 3);
+  assert.equal(first.juryBallots.length, 4);
+  assert.deepEqual(
+    first.finalPleas.map(({ playerId }) => playerId),
+    [player(4), player(5)],
+  );
+  assert.deepEqual(
+    first.deals.map(({ outcome }) => outcome),
+    ["honored", "betrayed"],
+  );
+  assert.equal(Object.isFrozen(first), true);
+  assert.equal(Object.isFrozen(first.eliminationOrder), true);
+  assert.equal(Object.isFrozen(first.deals), true);
+  assert.equal(first.deals.every(Object.isFrozen), true);
+
+  (deals[0] as { outcome: string }).outcome = "expired";
+  assert.equal(first.deals[0]?.outcome, "honored");
+  assert.equal(
+    createDossierProjection(state, {
+      viewerPlayerId: player(4),
+      deals: [],
+    }).ok,
+    true,
+  );
+});
+
+test("dossier access is completion-, membership-, and participant-gated", () => {
+  const complete = completedMatchState();
+  const outsider = id("user", 99);
+  const cases = [
+    createDossierProjection(juryVotingState(), {
+      viewerPlayerId: player(0),
+      deals: [],
+    }),
+    createDossierProjection(complete, {
+      viewerPlayerId: outsider,
+      deals: [],
+    }),
+    createDossierProjection(complete, {
+      viewerPlayerId: player(0),
+      deals: [
+        {
+          senderPlayerId: outsider,
+          recipientPlayerId: player(4),
+          promisedTargetPlayerId: player(5),
+          outcome: "reversed",
+        },
+      ],
+    }),
+  ];
+
+  assert.deepEqual(
+    cases.map((result) => (result.ok ? null : result.error.details.reason)),
+    ["match_not_complete", "viewer_not_in_roster", "invalid_deal_participant"],
+  );
+});
+
+function simulate(seed: number, players: readonly UserId[] = playerIds) {
+  return simulateHeadlessMatch({
+    matchId,
+    ruleset: ruleset(),
+    playerIds: players,
+    lobbyDeadline,
+    seed,
+  });
+}
+
+test("a seed reproduces an identical complete six-player match and dossier", () => {
+  const first = simulate(42);
+  const second = simulate(42);
+
+  assert.deepEqual(first, second);
+  assert.equal(first.ok, true);
+  if (!first.ok) {
+    return;
+  }
+  assert.equal(first.value.state.phase, "complete");
+  assert.notEqual(first.value.state.winnerPlayerId, null);
+  assert.equal(first.value.state.completedRounds.length, 4);
+  assert.equal(first.value.dossier.rounds.length, 4);
+  assert.equal(first.value.dossier.juryBallots.length, 4);
+  assert.equal(first.value.commandCount < 500, true);
+  assert.equal(Object.isFrozen(first.value), true);
+});
+
+test("two thousand seeded matches finish with one winner and no illegal command", () => {
+  const winners = new Set<UserId>();
+  for (let seed = 0; seed < 2_000; seed += 1) {
+    const result = simulate(seed);
+    assert.equal(result.ok, true, `seed ${seed} must complete`);
+    if (!result.ok) {
+      continue;
+    }
+    const winnerPlayerId = result.value.state.winnerPlayerId;
+    assert.notEqual(winnerPlayerId, null);
+    assert.equal(result.value.state.juryResult?.winnerPlayerId, winnerPlayerId);
+    assert.equal(result.value.state.completedRounds.length, 4);
+    assert.deepEqual(result.value.dossier.eliminationOrder.length, 4);
+    winners.add(winnerPlayerId as UserId);
+  }
+  assert.equal(winners.size > 1, true);
+});
+
+test("headless simulation rejects invalid seeds and non-six-player inputs", () => {
+  const cases = [simulate(-1), simulate(1, playerIds.slice(0, 5))];
+
+  assert.deepEqual(
+    cases.map((result) => (result.ok ? null : result.error.details.reason)),
+    ["invalid_seed", "invalid_input"],
+  );
 });
