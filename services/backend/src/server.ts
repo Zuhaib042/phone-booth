@@ -4,7 +4,13 @@ import type { Pool } from "pg";
 
 import { buildApi } from "./app.js";
 import {
+  DeterministicModerationProvider,
+  UnavailableModerationProvider,
+} from "./chat/moderation.js";
+import { PostgresChatService } from "./chat/service.js";
+import {
   loadApiConfig,
+  loadChatConfig,
   loadDatastoreConfig,
   loadIdentityConfig,
   loadMatchmakingConfig,
@@ -116,6 +122,7 @@ export async function startApi(
   let matchmakingService: PostgresMatchmakingService | undefined;
   let realtimeQueryService: PostgresRealtimeQueryService | undefined;
   let matchService: PostgresMatchApplication | undefined;
+  let chatService: PostgresChatService | undefined;
 
   if (identityConfig.provider !== "disabled") {
     const datastores = loadDatastoreConfig(environment);
@@ -141,6 +148,7 @@ export async function startApi(
         realtimeSubscriber.connect(),
       ]);
       const transactions = new PostgresTransactionRunner(pool);
+      const chatConfig = loadChatConfig(environment);
       identityService = new PostgresIdentityService(
         transactions,
         createIdentityProvider(identityConfig),
@@ -156,6 +164,13 @@ export async function startApi(
       );
       matchService = new PostgresMatchApplication(
         new PostgresMatchCommandExecutor(transactions),
+      );
+      chatService = new PostgresChatService(
+        transactions,
+        chatConfig.moderationProvider === "deterministic"
+          ? new DeterministicModerationProvider()
+          : new UnavailableModerationProvider(),
+        chatConfig,
       );
       realtimeGateway = new RealtimeGateway(
         identityService,
@@ -184,6 +199,7 @@ export async function startApi(
       ? {}
       : {
           identityService,
+          chatService: chatService as PostgresChatService,
           matchmakingService: matchmakingService as PostgresMatchmakingService,
           matchService: matchService as PostgresMatchApplication,
           realtimeGateway: realtimeGateway as RealtimeGateway,

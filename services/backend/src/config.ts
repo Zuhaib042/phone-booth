@@ -9,6 +9,7 @@ const LOG_LEVELS = [
   "silent",
 ] as const;
 const IDENTITY_PROVIDERS = ["disabled", "development", "apple"] as const;
+const CHAT_MODERATION_PROVIDERS = ["disabled", "deterministic"] as const;
 
 export type NodeEnvironment = (typeof NODE_ENVIRONMENTS)[number];
 export type LogLevel = (typeof LOG_LEVELS)[number];
@@ -45,6 +46,17 @@ export interface RealtimeConfig {
   readonly heartbeatIntervalMilliseconds: number;
   readonly heartbeatTimeoutMilliseconds: number;
   readonly resumeLimit: number;
+}
+
+export interface ChatConfig {
+  readonly duplicateWindowSeconds: number;
+  readonly maximumTypedMessageCharacters: number;
+  readonly moderationProvider: (typeof CHAT_MODERATION_PROVIDERS)[number];
+  readonly moderationTimeoutMilliseconds: number;
+  readonly rapidTargetLimit: number;
+  readonly rateLimitWindowSeconds: number;
+  readonly threadRateLimit: number;
+  readonly userRateLimit: number;
 }
 
 export interface DatastoreConfig {
@@ -374,5 +386,71 @@ export function loadRealtimeConfig(
     heartbeatIntervalMilliseconds,
     heartbeatTimeoutMilliseconds,
     resumeLimit: readInteger(environment, "REALTIME_RESUME_LIMIT", 100, 1, 500),
+  };
+}
+
+export function loadChatConfig(
+  environment: Environment = process.env,
+): ChatConfig {
+  const { nodeEnvironment } = loadRuntimeConfig(environment);
+  const moderationProvider = readChoice(
+    environment,
+    "CHAT_MODERATION_PROVIDER",
+    nodeEnvironment === "production" ? "disabled" : "deterministic",
+    CHAT_MODERATION_PROVIDERS,
+  );
+  if (
+    nodeEnvironment === "production" &&
+    moderationProvider === "deterministic"
+  ) {
+    throw new ConfigError(
+      "CHAT_MODERATION_PROVIDER=deterministic is forbidden when NODE_ENV=production",
+    );
+  }
+  return {
+    duplicateWindowSeconds: readInteger(
+      environment,
+      "CHAT_DUPLICATE_WINDOW_SECONDS",
+      30,
+      1,
+      600,
+    ),
+    maximumTypedMessageCharacters: readInteger(
+      environment,
+      "CHAT_MAX_TYPED_CHARACTERS",
+      240,
+      1,
+      240,
+    ),
+    moderationProvider,
+    moderationTimeoutMilliseconds: readInteger(
+      environment,
+      "CHAT_MODERATION_TIMEOUT_MS",
+      1_500,
+      10,
+      10_000,
+    ),
+    rapidTargetLimit: readInteger(
+      environment,
+      "CHAT_RAPID_TARGET_LIMIT",
+      3,
+      1,
+      5,
+    ),
+    rateLimitWindowSeconds: readInteger(
+      environment,
+      "CHAT_RATE_WINDOW_SECONDS",
+      10,
+      1,
+      300,
+    ),
+    threadRateLimit: readInteger(
+      environment,
+      "CHAT_THREAD_RATE_LIMIT",
+      4,
+      1,
+      100,
+    ),
+    userRateLimit: readInteger(environment, "CHAT_USER_RATE_LIMIT", 6, 1, 200),
   };
 }

@@ -50,6 +50,51 @@ export function hashIdempotencyRequest(request: JsonValue): string {
 }
 
 export class PostgresIdempotencyRepository {
+  public async findCompleted(
+    client: PoolClient,
+    identity: IdempotencyIdentity,
+  ): Promise<StoredHttpResponse | undefined> {
+    const existing = await client.query<IdempotencyRow>(
+      `
+        SELECT
+          request_hash,
+          response_status,
+          response_headers,
+          response_body,
+          completed_at
+        FROM idempotency_keys
+        WHERE
+          account_id = $1
+          AND operation = $2
+          AND idempotency_key = $3
+      `,
+      [identity.accountId, identity.operation, identity.key],
+    );
+    const row = existing.rows[0];
+    if (row === undefined) {
+      return undefined;
+    }
+    if (row.request_hash !== identity.requestHash) {
+      throw new IdempotencyConflictError(
+        identity.accountId,
+        identity.operation,
+        identity.key,
+      );
+    }
+    if (
+      row.completed_at === null ||
+      row.response_status === null ||
+      !isJsonObject(row.response_headers)
+    ) {
+      return undefined;
+    }
+    return {
+      status: row.response_status,
+      headers: row.response_headers,
+      body: row.response_body as JsonValue,
+    };
+  }
+
   public async acquire(
     client: PoolClient,
     identity: IdempotencyIdentity,

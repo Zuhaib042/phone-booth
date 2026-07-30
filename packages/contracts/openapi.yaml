@@ -12,7 +12,7 @@ info:
     Identity endpoints exchange provider credentials for Project Booth
     sessions. Game endpoints trust only the resulting internal account and
     never a platform-provider identifier.
-  version: 0.3.0
+  version: 0.4.0
 
 x-project-booth-api-conventions:
   contractVersion: 1
@@ -49,6 +49,10 @@ tags:
     description: Match entry and recipient-safe snapshots.
   - name: Realtime
     description: Cursor-based recovery for real-time delivery.
+  - name: Chat
+    description: Match-private text threads and safe message delivery.
+  - name: Safety
+    description: Match mute, report, and future-pairing block commands.
 
 security:
   - bearerAuth: []
@@ -421,6 +425,292 @@ paths:
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
 
+  /v1/chat/quick-phrases:
+    get:
+      tags:
+        - Chat
+      summary: List provider-independent structured chat phrases
+      operationId: listChatQuickPhrases
+      responses:
+        "200":
+          description: The versioned server-owned quick phrase catalog.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - quickPhrases
+                properties:
+                  quickPhrases:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/QuickPhrase"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /v1/matches/{matchId}/chat/threads:
+    parameters:
+      - $ref: "#/components/parameters/MatchId"
+    get:
+      tags:
+        - Chat
+      summary: List the active contestant's match-private threads
+      operationId: listMatchChatThreads
+      responses:
+        "200":
+          description: One private thread for every other active contestant.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - threads
+                properties:
+                  threads:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ChatThread"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /v1/matches/{matchId}/chat/threads/{threadId}/messages:
+    parameters:
+      - $ref: "#/components/parameters/MatchId"
+      - $ref: "#/components/parameters/ThreadId"
+    get:
+      tags:
+        - Chat
+      summary: List delivered messages in a private thread
+      operationId: listChatMessages
+      parameters:
+        - name: afterMessageId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        "200":
+          description: Delivered messages visible to both thread members.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessagePage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+    post:
+      tags:
+        - Chat
+      summary: Submit typed text or a structured quick phrase
+      description: |
+        Typed text is normalized, deterministically filtered, rate limited,
+        and classified before delivery. Quick phrases remain available when
+        the replaceable free-text moderation provider is unavailable.
+      operationId: sendChatMessage
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendChatMessageRequest"
+      responses:
+        "201":
+          description: The message was persisted and delivered.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessageAttempt"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Chat is locked or the recipient is unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatAttemptOrError"
+        "422":
+          description: Safety policy blocked the message without delivery.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessageAttempt"
+        "429":
+          description: A per-user, per-thread, duplicate, or target-switch limit was reached.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessageAttempt"
+        "503":
+          description: Free text failed closed because moderation is unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatAttemptOrError"
+
+  /v1/matches/{matchId}/chat/users/{subjectUserId}/mute:
+    parameters:
+      - $ref: "#/components/parameters/MatchId"
+      - $ref: "#/components/parameters/SubjectUserId"
+    post:
+      tags:
+        - Safety
+      summary: Mute a contestant for the current match
+      operationId: muteMatchContestant
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: The match-scoped mute is active.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SafetyRelationship"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /v1/matches/{matchId}/chat/users/{subjectUserId}/block:
+    parameters:
+      - $ref: "#/components/parameters/MatchId"
+      - $ref: "#/components/parameters/SubjectUserId"
+    post:
+      tags:
+        - Safety
+      summary: Block a contestant from communication and future matchmaking
+      operationId: blockMatchContestant
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: The durable block is active without changing match state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SafetyRelationship"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /v1/matches/{matchId}/chat/messages/{messageId}/report:
+    parameters:
+      - $ref: "#/components/parameters/MatchId"
+      - $ref: "#/components/parameters/MessageId"
+    post:
+      tags:
+        - Safety
+      summary: Report a delivered private message
+      operationId: reportChatMessage
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        $ref: "#/components/requestBodies/CreateReport"
+      responses:
+        "201":
+          description: Evidence was preserved and the report was queued.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportReceipt"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /v1/matches/{matchId}/chat/users/{subjectUserId}/report:
+    parameters:
+      - $ref: "#/components/parameters/MatchId"
+      - $ref: "#/components/parameters/SubjectUserId"
+    post:
+      tags:
+        - Safety
+      summary: Report a contestant's match behavior
+      operationId: reportMatchContestant
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        $ref: "#/components/requestBodies/CreateReport"
+      responses:
+        "201":
+          description: Limited relevant evidence was preserved and queued.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportReceipt"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
   /v1/realtime/events:
     get:
       tags:
@@ -468,6 +758,27 @@ components:
         format: uuid
     TicketId:
       name: ticketId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ThreadId:
+      name: threadId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    MessageId:
+      name: messageId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    SubjectUserId:
+      name: subjectUserId
       in: path
       required: true
       schema:
@@ -524,6 +835,20 @@ components:
       description: Bearer authentication challenge.
       schema:
         type: string
+
+  requestBodies:
+    CreateReport:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: false
+            required:
+              - category
+            properties:
+              category:
+                $ref: "#/components/schemas/ReportCategory"
 
   schemas:
     LiveHealth:
@@ -889,6 +1214,256 @@ components:
             userId:
               type: string
               format: uuid
+
+    QuickPhrase:
+      type: object
+      additionalProperties: false
+      required:
+        - key
+        - text
+      properties:
+        key:
+          type: string
+          pattern: ^[a-z][a-z0-9_]{0,63}$
+        text:
+          type: string
+          minLength: 1
+          maxLength: 240
+
+    ChatThread:
+      type: object
+      additionalProperties: false
+      required:
+        - blocked
+        - createdAt
+        - matchId
+        - muted
+        - otherUser
+        - threadId
+      properties:
+        blocked:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        matchId:
+          type: string
+          format: uuid
+        muted:
+          type: boolean
+        otherUser:
+          type: object
+          additionalProperties: false
+          required:
+            - avatarKey
+            - displayName
+            - userId
+          properties:
+            avatarKey:
+              type: string
+            displayName:
+              type: string
+            userId:
+              type: string
+              format: uuid
+        threadId:
+          type: string
+          format: uuid
+
+    SendChatMessageRequest:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required:
+            - kind
+            - text
+          properties:
+            kind:
+              type: string
+              const: typed
+            text:
+              type: string
+              minLength: 1
+              maxLength: 2048
+        - type: object
+          additionalProperties: false
+          required:
+            - kind
+            - quickPhraseKey
+          properties:
+            kind:
+              type: string
+              const: quick_phrase
+            quickPhraseKey:
+              type: string
+              minLength: 1
+              maxLength: 64
+
+    ChatMessage:
+      type: object
+      additionalProperties: false
+      required:
+        - body
+        - kind
+        - messageId
+        - recipientUserId
+        - senderUserId
+        - sentAt
+        - threadId
+      properties:
+        body:
+          type: string
+          minLength: 1
+          maxLength: 2048
+        kind:
+          type: string
+          enum:
+            - typed
+            - quick_phrase
+        messageId:
+          type: string
+          format: uuid
+        quickPhraseKey:
+          type: string
+        recipientUserId:
+          type: string
+          format: uuid
+        senderUserId:
+          type: string
+          format: uuid
+        sentAt:
+          type: string
+          format: date-time
+        threadId:
+          type: string
+          format: uuid
+
+    ChatMessageAttempt:
+      type: object
+      additionalProperties: false
+      required:
+        - body
+        - deliveryStatus
+        - kind
+        - messageId
+        - recipientUserId
+        - senderUserId
+        - sentAt
+        - threadId
+      properties:
+        body:
+          type: string
+          minLength: 1
+          maxLength: 2048
+        deliveryStatus:
+          type: string
+          enum:
+            - blocked
+            - delivered
+            - provider_unavailable
+            - rate_limited
+            - recipient_unavailable
+        kind:
+          type: string
+          enum:
+            - typed
+            - quick_phrase
+        messageId:
+          type: string
+          format: uuid
+        quickPhraseKey:
+          type: string
+        recipientUserId:
+          type: string
+          format: uuid
+        senderUserId:
+          type: string
+          format: uuid
+        sentAt:
+          type: string
+          format: date-time
+        threadId:
+          type: string
+          format: uuid
+
+    ChatAttemptOrError:
+      oneOf:
+        - $ref: "#/components/schemas/ChatMessageAttempt"
+        - $ref: "#/components/schemas/ErrorResponse"
+
+    ChatMessagePage:
+      type: object
+      additionalProperties: false
+      required:
+        - hasMore
+        - messages
+      properties:
+        hasMore:
+          type: boolean
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatMessage"
+
+    SafetyRelationship:
+      type: object
+      additionalProperties: false
+      required:
+        - active
+        - matchId
+        - subjectUserId
+      properties:
+        active:
+          type: boolean
+          const: true
+        matchId:
+          type: string
+          format: uuid
+        subjectUserId:
+          type: string
+          format: uuid
+
+    ReportCategory:
+      type: string
+      enum:
+        - harassment
+        - hate
+        - other
+        - self_harm
+        - sexual
+        - spam
+        - threat
+
+    ReportReceipt:
+      type: object
+      additionalProperties: false
+      required:
+        - category
+        - kind
+        - matchId
+        - reportId
+        - status
+        - subjectUserId
+      properties:
+        category:
+          $ref: "#/components/schemas/ReportCategory"
+        kind:
+          type: string
+          enum:
+            - message
+            - user
+        matchId:
+          type: string
+          format: uuid
+        reportId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          const: queued
+        subjectUserId:
+          type: string
+          format: uuid
 
     RealtimeEvent:
       type: object

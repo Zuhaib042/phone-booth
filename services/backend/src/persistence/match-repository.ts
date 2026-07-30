@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import type { MatchId, UtcTimestamp } from "@project-booth/domain";
 import type { MatchState, MatchVersion } from "@project-booth/game-engine";
 import type { PoolClient } from "pg";
@@ -144,6 +146,34 @@ async function insertRoster(
   }
 }
 
+async function insertChatThreads(
+  client: PoolClient,
+  state: MatchState,
+  occurredAt: UtcTimestamp,
+): Promise<void> {
+  for (const [index, left] of state.roster.entries()) {
+    for (const right of state.roster.slice(index + 1)) {
+      const [firstUserId, secondUserId] = [left.playerId, right.playerId].sort(
+        (first, second) => first.localeCompare(second),
+      );
+      await client.query(
+        `
+          INSERT INTO chat_threads (
+            id,
+            match_id,
+            first_user_id,
+            second_user_id,
+            created_at
+          )
+          VALUES ($1, $2, $3, $4, $5)
+          ON CONFLICT (match_id, first_user_id, second_user_id) DO NOTHING
+        `,
+        [randomUUID(), state.matchId, firstUserId, secondUserId, occurredAt],
+      );
+    }
+  }
+}
+
 async function updateRoster(
   client: PoolClient,
   state: MatchState,
@@ -230,6 +260,7 @@ export class PostgresMatchRepository implements MatchRepository {
       ],
     );
     await insertRoster(client, state);
+    await insertChatThreads(client, state, occurredAt);
     await persistCompletedRounds(client, state, occurredAt);
   }
 

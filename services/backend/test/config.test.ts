@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   ConfigError,
   loadApiConfig,
+  loadChatConfig,
   loadDatastoreConfig,
   loadIdentityConfig,
   loadMatchmakingConfig,
@@ -19,6 +20,34 @@ test("loadApiConfig supplies safe local defaults", () => {
     nodeEnvironment: "development",
     port: 3000,
   });
+});
+
+test("M7 chat safety settings fail closed in production", () => {
+  assert.deepEqual(loadChatConfig({}), {
+    duplicateWindowSeconds: 30,
+    maximumTypedMessageCharacters: 240,
+    moderationProvider: "deterministic",
+    moderationTimeoutMilliseconds: 1_500,
+    rapidTargetLimit: 3,
+    rateLimitWindowSeconds: 10,
+    threadRateLimit: 4,
+    userRateLimit: 6,
+  });
+  assert.equal(
+    loadChatConfig({ NODE_ENV: "production" }).moderationProvider,
+    "disabled",
+  );
+  assert.throws(
+    () =>
+      loadChatConfig({
+        CHAT_MODERATION_PROVIDER: "deterministic",
+        NODE_ENV: "production",
+      }),
+    (error: unknown) =>
+      error instanceof ConfigError &&
+      error.message ===
+        "CHAT_MODERATION_PROVIDER=deterministic is forbidden when NODE_ENV=production",
+  );
 });
 
 test("loadApiConfig validates and types explicit values", () => {

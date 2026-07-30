@@ -171,6 +171,7 @@ test(
         "0002_immutable_rulesets.sql",
         "0003_m5_identity_accounts_profiles.sql",
         "0004_m6_matchmaking_realtime.sql",
+        "0005_m7_chat_safety.sql",
       ]);
       assert.deepEqual(firstMigration.pending, []);
       assert.deepEqual(secondMigration.pending, []);
@@ -188,6 +189,7 @@ test(
         [
           "account_deletion_requests",
           "blocks",
+          "chat_threads",
           "devices",
           "idempotency_keys",
           "match_events",
@@ -196,12 +198,17 @@ test(
           "matchmaking_proposals",
           "matchmaking_safety",
           "matchmaking_tickets",
+          "message_filter_results",
+          "messages",
+          "moderation_reviews",
+          "mutes",
           "outbox_events",
           "profiles",
           "provider_credentials",
           "recent_pairings",
           "recipient_events",
           "recipient_streams",
+          "reports",
           "rounds",
           "rulesets",
           "scheduled_jobs",

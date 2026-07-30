@@ -3,6 +3,8 @@ import Fastify, {
   type FastifyServerOptions,
 } from "fastify";
 
+import { registerChatRoutes } from "./chat/routes.js";
+import type { ChatApplication } from "./chat/service.js";
 import type { ApiConfig } from "./config.js";
 import { registerIdentityRoutes } from "./identity/routes.js";
 import type { IdentityApplication } from "./identity/service.js";
@@ -16,6 +18,7 @@ import { registerRealtimeRoutes } from "./realtime/routes.js";
 import type { RealtimeGateway } from "./realtime/websocket.js";
 
 export interface BuildApiOptions {
+  readonly chatService?: ChatApplication;
   readonly identityService?: IdentityApplication;
   readonly logger?: FastifyServerOptions["logger"];
   readonly matchmakingService?: MatchmakingApplication;
@@ -75,6 +78,7 @@ export function buildApi(
   );
 
   registerIdentityRoutes(api, options.identityService);
+  registerChatRoutes(api, options.identityService, options.chatService);
   registerMatchmakingRoutes(
     api,
     options.identityService,

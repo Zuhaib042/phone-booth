@@ -32,6 +32,15 @@ export interface ProjectedMatchEvent {
   readonly recipientUserId?: UserId;
 }
 
+export interface PrivateRealtimeEventInput {
+  readonly event: unknown;
+  readonly eventType: string;
+  readonly matchId: string;
+  readonly matchVersion: number;
+  readonly occurredAt: UtcTimestamp;
+  readonly recipientUserId: UserId;
+}
+
 const CLIENT_INTERNAL_FIELDS = new Set([
   "deviceId",
   "deviceInformation",
@@ -141,6 +150,74 @@ function recipientsFor(
 }
 
 export class PostgresRealtimeEventRepository {
+  public async appendPrivateEvent(
+    client: PoolClient,
+    input: PrivateRealtimeEventInput,
+  ): Promise<NewOutboxEvent> {
+    const payload = toJsonObject(input.event);
+    assertSafeValue(payload, "player");
+    const membership = await client.query(
+      `
+        SELECT 1
+        FROM match_players
+        WHERE match_id = $1 AND player_id = $2
+      `,
+      [input.matchId, input.recipientUserId],
+    );
+    if (membership.rowCount !== 1) {
+      throw new Error("A private event recipient is not in the match");
+    }
+    const recipientCursor = await nextCursor(client, input.recipientUserId);
+    const eventId = randomUUID();
+    const type = realtimeType(input.eventType);
+    const envelope: RealtimeEventEnvelope = {
+      schemaVersion: 1,
+      eventId,
+      type,
+      occurredAt: input.occurredAt,
+      matchId: input.matchId,
+      matchVersion: input.matchVersion,
+      recipientCursor,
+      audience: "player",
+      recipientUserId: input.recipientUserId,
+      payload,
+    };
+    await client.query(
+      `
+        INSERT INTO recipient_events (
+          user_id,
+          recipient_cursor,
+          event_id,
+          event_type,
+          occurred_at,
+          match_id,
+          match_version,
+          audience,
+          payload
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, 'player', $8::jsonb)
+      `,
+      [
+        input.recipientUserId,
+        recipientCursor,
+        eventId,
+        type,
+        input.occurredAt,
+        input.matchId,
+        input.matchVersion,
+        JSON.stringify(payload),
+      ],
+    );
+    return {
+      eventId,
+      aggregateType: "realtime-recipient",
+      aggregateId: input.recipientUserId,
+      eventType: "realtime.delivery",
+      payload: toJsonObject(envelope),
+      occurredAt: input.occurredAt,
+    };
+  }
+
   public async appendProjectedEvents(
     client: PoolClient,
     state: MatchState,

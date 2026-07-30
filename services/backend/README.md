@@ -4,30 +4,38 @@ The backend package contains the Project Booth Fastify API and worker processes.
 
 ## Environment
 
-| Variable                             |                           Default | Accepted values                                                    |
-| ------------------------------------ | --------------------------------: | ------------------------------------------------------------------ |
-| `HOST`                               |                         `0.0.0.0` | Any non-empty bind host                                            |
-| `PORT`                               |                            `3000` | Integer from `0` to `65535`; use `0` only for ephemeral test ports |
-| `NODE_ENV`                           |                     `development` | `development`, `test`, or `production`                             |
-| `LOG_LEVEL`                          |                            `info` | `fatal`, `error`, `warn`, `info`, `debug`, `trace`, or `silent`    |
-| `DATABASE_URL`                       |   Required for datastore commands | `postgres:` or `postgresql:` connection URL                        |
-| `VALKEY_URL`                         |   Required for datastore commands | `redis:` or `rediss:` connection URL                               |
-| `WORKER_READY_FILE`                  | `/tmp/project-booth-worker-ready` | Any non-empty worker-writable path                                 |
-| `WORKER_BATCH_SIZE`                  |                              `25` | Integer from `1` to `100`                                          |
-| `WORKER_LEASE_MS`                    |                           `30000` | Integer from `1000` to `300000`                                    |
-| `WORKER_POLL_INTERVAL_MS`            |                             `250` | Integer from `25` to `60000`                                       |
-| `OUTBOX_CHANNEL`                     |            `project-booth:events` | Any non-empty Valkey publish channel                               |
-| `IDENTITY_PROVIDER`                  |                        `disabled` | `disabled`, `development`, or `apple`                              |
-| `APPLE_CLIENT_ID`                    |           Required for Apple auth | Sign in with Apple service identifier / token audience             |
-| `ACCESS_TOKEN_TTL_SECONDS`           |                             `900` | Integer from `60` to `3600`                                        |
-| `REFRESH_TOKEN_TTL_SECONDS`          |                         `2592000` | Integer from `3600` to `7776000`                                   |
-| `ACCOUNT_DELETION_DELAY_SECONDS`     |                               `0` | Integer from `0` to `604800`                                       |
-| `MATCHMAKING_READY_TIMEOUT_SECONDS`  |                              `15` | Integer from `5` to `120`                                          |
-| `MATCH_LOBBY_READY_TIMEOUT_SECONDS`  |                              `30` | Integer from `5` to `300`                                          |
-| `MATCHMAKING_RECENT_PAIRING_SECONDS` |                           `86400` | Integer from `0` to `2592000`                                      |
-| `REALTIME_HEARTBEAT_INTERVAL_MS`     |                           `10000` | Integer from `1000` to `60000`                                     |
-| `REALTIME_HEARTBEAT_TIMEOUT_MS`      |                           `30000` | Greater than the heartbeat interval, up to `180000`                |
-| `REALTIME_RESUME_LIMIT`              |                             `100` | Integer from `1` to `500`                                          |
+| Variable                             |                            Default | Accepted values                                                    |
+| ------------------------------------ | ---------------------------------: | ------------------------------------------------------------------ |
+| `HOST`                               |                          `0.0.0.0` | Any non-empty bind host                                            |
+| `PORT`                               |                             `3000` | Integer from `0` to `65535`; use `0` only for ephemeral test ports |
+| `NODE_ENV`                           |                      `development` | `development`, `test`, or `production`                             |
+| `LOG_LEVEL`                          |                             `info` | `fatal`, `error`, `warn`, `info`, `debug`, `trace`, or `silent`    |
+| `DATABASE_URL`                       |    Required for datastore commands | `postgres:` or `postgresql:` connection URL                        |
+| `VALKEY_URL`                         |    Required for datastore commands | `redis:` or `rediss:` connection URL                               |
+| `WORKER_READY_FILE`                  |  `/tmp/project-booth-worker-ready` | Any non-empty worker-writable path                                 |
+| `WORKER_BATCH_SIZE`                  |                               `25` | Integer from `1` to `100`                                          |
+| `WORKER_LEASE_MS`                    |                            `30000` | Integer from `1000` to `300000`                                    |
+| `WORKER_POLL_INTERVAL_MS`            |                              `250` | Integer from `25` to `60000`                                       |
+| `OUTBOX_CHANNEL`                     |             `project-booth:events` | Any non-empty Valkey publish channel                               |
+| `IDENTITY_PROVIDER`                  |                         `disabled` | `disabled`, `development`, or `apple`                              |
+| `APPLE_CLIENT_ID`                    |            Required for Apple auth | Sign in with Apple service identifier / token audience             |
+| `ACCESS_TOKEN_TTL_SECONDS`           |                              `900` | Integer from `60` to `3600`                                        |
+| `REFRESH_TOKEN_TTL_SECONDS`          |                          `2592000` | Integer from `3600` to `7776000`                                   |
+| `ACCOUNT_DELETION_DELAY_SECONDS`     |                                `0` | Integer from `0` to `604800`                                       |
+| `MATCHMAKING_READY_TIMEOUT_SECONDS`  |                               `15` | Integer from `5` to `120`                                          |
+| `MATCH_LOBBY_READY_TIMEOUT_SECONDS`  |                               `30` | Integer from `5` to `300`                                          |
+| `MATCHMAKING_RECENT_PAIRING_SECONDS` |                            `86400` | Integer from `0` to `2592000`                                      |
+| `REALTIME_HEARTBEAT_INTERVAL_MS`     |                            `10000` | Integer from `1000` to `60000`                                     |
+| `REALTIME_HEARTBEAT_TIMEOUT_MS`      |                            `30000` | Greater than the heartbeat interval, up to `180000`                |
+| `REALTIME_RESUME_LIMIT`              |                              `100` | Integer from `1` to `500`                                          |
+| `CHAT_MODERATION_PROVIDER`           | `deterministic` outside production | `disabled` or non-production `deterministic`                       |
+| `CHAT_MODERATION_TIMEOUT_MS`         |                             `1500` | Integer from `10` to `10000`                                       |
+| `CHAT_MAX_TYPED_CHARACTERS`          |                              `240` | Integer from `1` to `240`                                          |
+| `CHAT_RATE_WINDOW_SECONDS`           |                               `10` | Integer from `1` to `300`                                          |
+| `CHAT_USER_RATE_LIMIT`               |                                `6` | Integer from `1` to `200`                                          |
+| `CHAT_THREAD_RATE_LIMIT`             |                                `4` | Integer from `1` to `100`                                          |
+| `CHAT_DUPLICATE_WINDOW_SECONDS`      |                               `30` | Integer from `1` to `600`                                          |
+| `CHAT_RAPID_TARGET_LIMIT`            |                                `3` | Integer from `1` to `5`                                            |
 
 ## Commands
 
@@ -82,6 +90,27 @@ reconnecting, and then resume from `/v1/realtime/events` or a
 account. Valkey carries disposable queue membership, connection presence, and
 cross-instance fan-out; PostgreSQL retains tickets, matches, and resumable
 events.
+
+## Private chat and safety
+
+Every match has one durable private thread for each contestant pair. Only both
+currently active thread members can read or send messages, and sending locks
+during voting and other non-negotiation phases. Typed text is normalized,
+limited to 240 Unicode characters, checked for contact sharing, links,
+prohibited content, duplicates, flooding, and rapid target switching, then
+classified through a replaceable moderation provider.
+
+Permitted delivery writes sender acknowledgement and recipient delivery events
+with the same message ID in the message transaction. Blocked and failed
+attempts remain durable moderation evidence but never appear in recipient
+history or events. Production defaults the moderation provider to `disabled`,
+which fails typed text closed. Server-owned quick phrases bypass the provider
+and remain usable during outages.
+
+Match-scoped mute, evidence-preserving message and user reports, and durable
+account blocks are idempotent commands. Blocks silence current communication
+and feed the existing future-match exclusion query without changing the
+current roster, votes, or match version.
 
 ## PostgreSQL persistence
 

@@ -1,7 +1,7 @@
 # Project Booth — Milestone Blueprint
 
 **Status:** Active execution plan  
-**Version:** 0.7<br>
+**Version:** 0.8<br>
 **Framework decision:** Direct Fastify locked for the MVP  
 **Product source:** [MVP Product Specification](MVP_PRODUCT_SPEC.md)  
 **Architecture source:** [Technical Architecture](TECHNICAL_ARCHITECTURE.md)
@@ -14,9 +14,9 @@ Only one chunk is active at a time. Finishing a milestone does not authorize sta
 
 ### Current execution status
 
-- Completed: M0.1–M0.3, M1.1–M1.7, M2.1–M2.5, M3.1–M3.8, M4.1–M4.7, M5.1–M5.6, and M6.1–M6.7
+- Completed: M0.1–M0.3, M1.1–M1.7, M2.1–M2.5, M3.1–M3.8, M4.1–M4.7, M5.1–M5.6, M6.1–M6.7, and M7.1–M7.6
 - Active: none
-- Next: M7.1 — Match-private one-to-one threads
+- Next: M8.1 — Immutable coin ledger
 - Last verified: 2026-07-30 with Node.js 24 LTS, pnpm 11, and Swift 6.3
 
 ## 2. Chunk rules
@@ -193,14 +193,14 @@ flowchart LR
 
 ## 12. M7 — Private text chat and safety foundation
 
-| Chunk | Concise change                                                                                            | Verification                                                                           |
-| ----- | --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| M7.1  | Add match-private one-to-one threads and message persistence.                                             | Only active contestants in the same match can address each other.                      |
-| M7.2  | Add Unicode normalization, length limits, contact/link detection, spam limits, and prohibited-term rules. | Obfuscation and bypass fixture suite produces expected outcomes.                       |
-| M7.3  | Add a replaceable moderation-provider interface with a deterministic test provider.                       | Allow, block, urgent-review, timeout, and provider-failure paths pass.                 |
-| M7.4  | Deliver permitted messages through recipient-safe events.                                                 | Sender acknowledgement and recipient delivery reference the same message ID.           |
-| M7.5  | Add quick phrases and fail-closed free text during moderation outages.                                    | Voting and structured offers continue while free text is unavailable.                  |
-| M7.6  | Add mute, message report, user report, and block commands.                                                | Mute affects the current match; block prevents future pairings without changing votes. |
+| Chunk           | Concise change                                                                                            | Verification                                                                           |
+| --------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| M7.1 — Complete | Add match-private one-to-one threads and message persistence.                                             | Only active contestants in the same match can address each other.                      |
+| M7.2 — Complete | Add Unicode normalization, length limits, contact/link detection, spam limits, and prohibited-term rules. | Obfuscation and bypass fixture suite produces expected outcomes.                       |
+| M7.3 — Complete | Add a replaceable moderation-provider interface with a deterministic test provider.                       | Allow, block, urgent-review, timeout, and provider-failure paths pass.                 |
+| M7.4 — Complete | Deliver permitted messages through recipient-safe events.                                                 | Sender acknowledgement and recipient delivery reference the same message ID.           |
+| M7.5 — Complete | Add quick phrases and fail-closed free text during moderation outages.                                    | Voting and structured offers continue while free text is unavailable.                  |
+| M7.6 — Complete | Add mute, message report, user report, and block commands.                                                | Mute affects the current match; block prevents future pairings without changing votes. |
 
 **Exit gate:** Gameplay chat is scoped, filtered, reportable, blockable, and nonessential to voting availability.
 
@@ -338,14 +338,13 @@ This is post-MVP and begins only after iOS retention validates further investmen
 
 ## 22. Immediate next chunk
 
-The next implementation chunk is **M7.1 — Match-private one-to-one threads**.
+The next implementation chunk is **M8.1 — Immutable coin ledger**.
 
 It should create only:
 
-- Durable thread membership scoped to one match
-- One private thread for each eligible contestant pair
-- Authorization that permits only current match participants
-- Focused persistence and cross-account access tests
+- Coin accounts and immutable ledger transactions
+- Balanced debit and credit entries
+- Focused property tests proving every transaction sums to zero
 
-It must not implement typed message filtering, moderation-provider calls,
-real-time message delivery, mutes, reports, or blocks.
+It must not implement balance buckets, launch grant values, cosmetic sinks,
+formal offers, settlement, or reversal behavior.
