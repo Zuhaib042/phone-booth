@@ -7,10 +7,22 @@ import type { ApiConfig } from "./config.js";
 import { registerIdentityRoutes } from "./identity/routes.js";
 import type { IdentityApplication } from "./identity/service.js";
 import { createLoggerOptions } from "./logger.js";
+import { registerMatchRoutes } from "./matches/routes.js";
+import type { PostgresMatchApplication } from "./matches/service.js";
+import { registerMatchmakingRoutes } from "./matchmaking/routes.js";
+import type { MatchmakingApplication } from "./matchmaking/service.js";
+import type { PostgresRealtimeQueryService } from "./realtime/events.js";
+import { registerRealtimeRoutes } from "./realtime/routes.js";
+import type { RealtimeGateway } from "./realtime/websocket.js";
 
 export interface BuildApiOptions {
   readonly identityService?: IdentityApplication;
   readonly logger?: FastifyServerOptions["logger"];
+  readonly matchmakingService?: MatchmakingApplication;
+  readonly matchService?: PostgresMatchApplication;
+  readonly realtimeGateway?: RealtimeGateway;
+  readonly realtimeQueryService?: PostgresRealtimeQueryService;
+  readonly realtimeResumeLimit?: number;
 }
 
 const LIVE_RESPONSE_SCHEMA = {
@@ -63,6 +75,19 @@ export function buildApi(
   );
 
   registerIdentityRoutes(api, options.identityService);
+  registerMatchmakingRoutes(
+    api,
+    options.identityService,
+    options.matchmakingService,
+  );
+  registerMatchRoutes(api, options.identityService, options.matchService);
+  registerRealtimeRoutes(
+    api,
+    options.identityService,
+    options.realtimeQueryService,
+    options.realtimeResumeLimit,
+  );
+  options.realtimeGateway?.attach(api.server);
 
   return api;
 }

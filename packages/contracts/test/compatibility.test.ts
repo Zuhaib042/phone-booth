@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
+  CLIENT_MESSAGE_V1_SCHEMA,
   createCompatibilitySurface,
   findBreakingContractChanges,
   PROTOCOL_ERROR_V1_SCHEMA,
@@ -13,6 +14,7 @@ import {
 } from "../src/index.js";
 
 interface ContractSet extends JsonObject {
+  readonly clientMessage: JsonValue;
   readonly openapi: JsonValue;
   readonly protocolError: JsonValue;
   readonly serverEvent: JsonValue;
@@ -83,12 +85,18 @@ const breakingCasesUrl = new URL(
 test("current OpenAPI and realtime contracts preserve the baseline", async () => {
   const baseline = asContractSet(await readJson(baselineUrl));
   const current: ContractSet = {
+    clientMessage: createCompatibilitySurface(CLIENT_MESSAGE_V1_SCHEMA),
     openapi: createCompatibilitySurface(await readJson(currentOpenApiUrl)),
     protocolError: createCompatibilitySurface(PROTOCOL_ERROR_V1_SCHEMA),
     serverEvent: createCompatibilitySurface(SERVER_EVENT_ENVELOPE_V1_SCHEMA),
   };
 
-  for (const contract of ["openapi", "protocolError", "serverEvent"] as const) {
+  for (const contract of [
+    "clientMessage",
+    "openapi",
+    "protocolError",
+    "serverEvent",
+  ] as const) {
     assert.deepEqual(
       findBreakingContractChanges(baseline[contract], current[contract]),
       [],

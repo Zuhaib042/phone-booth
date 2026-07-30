@@ -1,4 +1,44 @@
 {
+  "clientMessage": {
+    "$id": "urn:project-booth:schema:client-message:v1",
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "oneOf": [
+      {
+        "additionalProperties": false,
+        "properties": {
+          "afterCursor": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "schemaVersion": {
+            "const": 1
+          },
+          "type": {
+            "const": "connection.resume"
+          }
+        },
+        "required": ["afterCursor", "schemaVersion", "type"],
+        "type": "object"
+      },
+      {
+        "additionalProperties": false,
+        "properties": {
+          "schemaVersion": {
+            "const": 1
+          },
+          "state": {
+            "enum": ["background", "foreground"]
+          },
+          "type": {
+            "const": "connection.state"
+          }
+        },
+        "required": ["schemaVersion", "state", "type"],
+        "type": "object"
+      }
+    ]
+  },
   "formatVersion": 1,
   "openapi": {
     "components": {
@@ -56,6 +96,24 @@
             "maximum": 100,
             "minimum": 1,
             "type": "integer"
+          }
+        },
+        "MatchId": {
+          "in": "path",
+          "name": "matchId",
+          "required": true,
+          "schema": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "TicketId": {
+          "in": "path",
+          "name": "ticketId",
+          "required": true,
+          "schema": {
+            "format": "uuid",
+            "type": "string"
           }
         }
       },
@@ -116,6 +174,34 @@
             }
           }
         },
+        "NotFound": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ErrorResponse"
+              }
+            }
+          },
+          "headers": {
+            "X-Request-Id": {
+              "$ref": "#/components/headers/RequestId"
+            }
+          }
+        },
+        "ServiceUnavailable": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ErrorResponse"
+              }
+            }
+          },
+          "headers": {
+            "X-Request-Id": {
+              "$ref": "#/components/headers/RequestId"
+            }
+          }
+        },
         "TooManyRequests": {
           "content": {
             "application/json": {
@@ -152,6 +238,39 @@
         }
       },
       "schemas": {
+        "Account": {
+          "additionalProperties": false,
+          "properties": {
+            "deletionStatus": {
+              "enum": ["completed", "none", "pending"],
+              "type": "string"
+            },
+            "profile": {
+              "$ref": "#/components/schemas/PublicProfile"
+            },
+            "status": {
+              "enum": ["active", "deleted", "deletion_pending"],
+              "type": "string"
+            },
+            "userId": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": ["deletionStatus", "profile", "status", "userId"],
+          "type": "object"
+        },
+        "AccountDeletionAccepted": {
+          "additionalProperties": false,
+          "properties": {
+            "status": {
+              "enum": ["completed", "pending"],
+              "type": "string"
+            }
+          },
+          "required": ["status"],
+          "type": "object"
+        },
         "ApiError": {
           "additionalProperties": false,
           "properties": {
@@ -178,6 +297,46 @@
           "required": ["code", "message", "traceId"],
           "type": "object"
         },
+        "CreateMatchmakingTicketRequest": {
+          "additionalProperties": false,
+          "properties": {
+            "compatibilityVersion": {
+              "maximum": 2147483647,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "language": {
+              "pattern": "^[a-z]{2,3}(?:-[A-Z]{2})?$",
+              "type": "string"
+            },
+            "region": {
+              "pattern": "^[a-z0-9][a-z0-9-]{0,31}$",
+              "type": "string"
+            }
+          },
+          "required": ["compatibilityVersion", "language", "region"],
+          "type": "object"
+        },
+        "DeviceRegistration": {
+          "additionalProperties": false,
+          "properties": {
+            "appVersion": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "installationId": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "platform": {
+              "enum": ["ios", "test"],
+              "type": "string"
+            }
+          },
+          "required": ["installationId", "platform"],
+          "type": "object"
+        },
         "ErrorResponse": {
           "additionalProperties": false,
           "properties": {
@@ -186,6 +345,39 @@
             }
           },
           "required": ["error"],
+          "type": "object"
+        },
+        "ExchangeCredentialRequest": {
+          "additionalProperties": false,
+          "properties": {
+            "credential": {
+              "maxLength": 8192,
+              "minLength": 1,
+              "type": "string"
+            },
+            "device": {
+              "$ref": "#/components/schemas/DeviceRegistration"
+            },
+            "nonce": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": ["credential", "device"],
+          "type": "object"
+        },
+        "ExchangeCredentialResponse": {
+          "additionalProperties": false,
+          "properties": {
+            "account": {
+              "$ref": "#/components/schemas/Account"
+            },
+            "tokens": {
+              "$ref": "#/components/schemas/TokenPair"
+            }
+          },
+          "required": ["account", "tokens"],
           "type": "object"
         },
         "LiveHealth": {
@@ -197,6 +389,199 @@
             }
           },
           "required": ["status"],
+          "type": "object"
+        },
+        "MatchReady": {
+          "additionalProperties": false,
+          "properties": {
+            "matchId": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "matchVersion": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "phase": {
+              "type": "string"
+            },
+            "phaseDeadline": {
+              "format": "date-time",
+              "type": ["string", "null"]
+            },
+            "ready": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "matchId",
+            "matchVersion",
+            "phase",
+            "phaseDeadline",
+            "ready"
+          ],
+          "type": "object"
+        },
+        "MatchSnapshot": {
+          "additionalProperties": false,
+          "properties": {
+            "lastRecipientCursor": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "matchId": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "matchVersion": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "phase": {
+              "type": "string"
+            },
+            "phaseDeadline": {
+              "format": "date-time",
+              "type": ["string", "null"]
+            },
+            "roster": {
+              "items": {
+                "$ref": "#/components/schemas/MatchSnapshotRosterEntry"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            "ruleset": {
+              "additionalProperties": false,
+              "properties": {
+                "rulesetId": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "rulesetVersion": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              },
+              "required": ["rulesetId", "rulesetVersion"],
+              "type": "object"
+            },
+            "self": {
+              "additionalProperties": false,
+              "properties": {
+                "ready": {
+                  "type": "boolean"
+                },
+                "userId": {
+                  "format": "uuid",
+                  "type": "string"
+                }
+              },
+              "required": ["ready", "userId"],
+              "type": "object"
+            }
+          },
+          "required": [
+            "lastRecipientCursor",
+            "matchId",
+            "matchVersion",
+            "phase",
+            "phaseDeadline",
+            "roster",
+            "ruleset",
+            "self"
+          ],
+          "type": "object"
+        },
+        "MatchSnapshotRosterEntry": {
+          "additionalProperties": false,
+          "properties": {
+            "avatarKey": {
+              "type": "string"
+            },
+            "displayName": {
+              "type": "string"
+            },
+            "ready": {
+              "type": "boolean"
+            },
+            "status": {
+              "enum": ["active", "eliminated"],
+              "type": "string"
+            },
+            "userId": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": ["avatarKey", "displayName", "ready", "status", "userId"],
+          "type": "object"
+        },
+        "MatchmakingTicket": {
+          "additionalProperties": false,
+          "properties": {
+            "compatibilityVersion": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "createdAt": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "language": {
+              "type": "string"
+            },
+            "matchId": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "proposalId": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "readyConfirmed": {
+              "type": "boolean"
+            },
+            "readyDeadline": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "region": {
+              "type": "string"
+            },
+            "rulesetId": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "rulesetVersion": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "status": {
+              "enum": ["cancelled", "matched", "proposed", "queued"],
+              "type": "string"
+            },
+            "ticketId": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "updatedAt": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          "required": [
+            "compatibilityVersion",
+            "createdAt",
+            "language",
+            "readyConfirmed",
+            "region",
+            "rulesetId",
+            "rulesetVersion",
+            "status",
+            "ticketId",
+            "updatedAt"
+          ],
           "type": "object"
         },
         "PageMetadata": {
@@ -212,6 +597,171 @@
             }
           },
           "required": ["hasMore"],
+          "type": "object"
+        },
+        "PublicProfile": {
+          "additionalProperties": false,
+          "properties": {
+            "avatarKey": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "displayName": {
+              "maxLength": 24,
+              "minLength": 3,
+              "type": "string"
+            },
+            "progressionLevel": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "userId": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "avatarKey",
+            "displayName",
+            "progressionLevel",
+            "userId"
+          ],
+          "type": "object"
+        },
+        "RealtimeEvent": {
+          "additionalProperties": false,
+          "properties": {
+            "audience": {
+              "enum": ["active", "participants", "player"],
+              "type": "string"
+            },
+            "eventId": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "matchId": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "matchVersion": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "occurredAt": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "payload": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "recipientCursor": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "recipientUserId": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "schemaVersion": {
+              "const": 1,
+              "type": "integer"
+            },
+            "type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "audience",
+            "eventId",
+            "matchId",
+            "matchVersion",
+            "occurredAt",
+            "payload",
+            "recipientCursor",
+            "schemaVersion",
+            "type"
+          ],
+          "type": "object"
+        },
+        "RealtimeEventPage": {
+          "additionalProperties": false,
+          "properties": {
+            "events": {
+              "items": {
+                "$ref": "#/components/schemas/RealtimeEvent"
+              },
+              "type": "array"
+            },
+            "hasMore": {
+              "type": "boolean"
+            },
+            "nextCursor": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": ["events", "hasMore", "nextCursor"],
+          "type": "object"
+        },
+        "RefreshSessionRequest": {
+          "additionalProperties": false,
+          "properties": {
+            "refreshToken": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": ["refreshToken"],
+          "type": "object"
+        },
+        "TokenPair": {
+          "additionalProperties": false,
+          "properties": {
+            "accessToken": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "accessTokenExpiresAt": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "refreshToken": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "refreshTokenExpiresAt": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "tokenType": {
+              "const": "Bearer",
+              "type": "string"
+            }
+          },
+          "required": [
+            "accessToken",
+            "accessTokenExpiresAt",
+            "refreshToken",
+            "refreshTokenExpiresAt",
+            "tokenType"
+          ],
+          "type": "object"
+        },
+        "UpdateProfileRequest": {
+          "additionalProperties": false,
+          "properties": {
+            "displayName": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": ["displayName"],
           "type": "object"
         }
       },
@@ -242,6 +792,523 @@
           "security": [],
           "tags": ["Health"]
         }
+      },
+      "/v1/account": {
+        "delete": {
+          "operationId": "requestAccountDeletion",
+          "responses": {
+            "202": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/AccountDeletionAccepted"
+                  }
+                }
+              }
+            },
+            "401": {
+              "$ref": "#/components/responses/Unauthorized"
+            },
+            "404": {
+              "$ref": "#/components/responses/NotFound"
+            },
+            "503": {
+              "$ref": "#/components/responses/ServiceUnavailable"
+            }
+          },
+          "tags": ["Account"]
+        },
+        "get": {
+          "operationId": "getCurrentAccount",
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Account"
+                  }
+                }
+              }
+            },
+            "401": {
+              "$ref": "#/components/responses/Unauthorized"
+            },
+            "404": {
+              "$ref": "#/components/responses/NotFound"
+            },
+            "503": {
+              "$ref": "#/components/responses/ServiceUnavailable"
+            }
+          },
+          "tags": ["Account"]
+        }
+      },
+      "/v1/auth/exchange": {
+        "post": {
+          "operationId": "exchangeIdentityCredential",
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExchangeCredentialRequest"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "201": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ExchangeCredentialResponse"
+                  }
+                }
+              }
+            },
+            "400": {
+              "$ref": "#/components/responses/BadRequest"
+            },
+            "401": {
+              "$ref": "#/components/responses/Unauthorized"
+            },
+            "403": {
+              "$ref": "#/components/responses/Forbidden"
+            },
+            "409": {
+              "$ref": "#/components/responses/Conflict"
+            },
+            "503": {
+              "$ref": "#/components/responses/ServiceUnavailable"
+            }
+          },
+          "security": [],
+          "tags": ["Identity"]
+        }
+      },
+      "/v1/auth/logout": {
+        "post": {
+          "operationId": "logoutIdentitySession",
+          "responses": {
+            "204": {},
+            "401": {
+              "$ref": "#/components/responses/Unauthorized"
+            },
+            "503": {
+              "$ref": "#/components/responses/ServiceUnavailable"
+            }
+          },
+          "tags": ["Identity"]
+        }
+      },
+      "/v1/auth/refresh": {
+        "post": {
+          "operationId": "refreshIdentitySession",
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefreshSessionRequest"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/TokenPair"
+                  }
+                }
+              }
+            },
+            "400": {
+              "$ref": "#/components/responses/BadRequest"
+            },
+            "401": {
+              "$ref": "#/components/responses/Unauthorized"
+            },
+            "503": {
+              "$ref": "#/components/responses/ServiceUnavailable"
+            }
+          },
+          "security": [],
+          "tags": ["Identity"]
+        }
+      },
+      "/v1/matches/{matchId}/ready": {
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/MatchId"
+          }
+        ],
+        "post": {
+          "operationId": "confirmBoothReady",
+          "parameters": [
+            {
+              "$ref": "#/components/parameters/IdempotencyKey"
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/MatchReady"
+                  }
+                }
+              }
+            },
+            "401": {
+              "$ref": "#/components/responses/Unauthorized"
+            },
+            "404": {
+              "$ref": "#/components/responses/NotFound"
+            },
+            "409": {
+              "$ref": "#/components/responses/Conflict"
+            },
+            "503": {
+              "$ref": "#/components/responses/ServiceUnavailable"
+            }
+          },
+          "tags": ["Matches"]
+        }
+      },
+      "/v1/matches/{matchId}/snapshot": {
+        "get": {
+          "operationId": "getMatchSnapshot",
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/MatchSnapshot"
+                  }
+                }
+              }
+            },
+            "401": {
+              "$ref": "#/components/responses/Unauthorized"
+            },
+            "403": {
+              "$ref": "#/components/responses/Forbidden"
+            },
+            "404": {
+              "$ref": "#/components/responses/NotFound"
+            },
+            "503": {
+              "$ref": "#/components/responses/ServiceUnavailable"
+            }
+          },
+          "tags": ["Matches"]
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/MatchId"
+          }
+        ]
+      },
+      "/v1/matchmaking/tickets": {
+        "post": {
+          "operationId": "createMatchmakingTicket",
+          "parameters": [
+            {
+              "$ref": "#/components/parameters/IdempotencyKey"
+            }
+          ],
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateMatchmakingTicketRequest"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/MatchmakingTicket"
+                  }
+                }
+              },
+              "headers": {
+                "Idempotency-Replayed": {
+                  "$ref": "#/components/headers/IdempotencyReplayed"
+                }
+              }
+            },
+            "201": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/MatchmakingTicket"
+                  }
+                }
+              },
+              "headers": {
+                "Idempotency-Replayed": {
+                  "$ref": "#/components/headers/IdempotencyReplayed"
+                }
+              }
+            },
+            "400": {
+              "$ref": "#/components/responses/BadRequest"
+            },
+            "401": {
+              "$ref": "#/components/responses/Unauthorized"
+            },
+            "403": {
+              "$ref": "#/components/responses/Forbidden"
+            },
+            "409": {
+              "$ref": "#/components/responses/Conflict"
+            },
+            "503": {
+              "$ref": "#/components/responses/ServiceUnavailable"
+            }
+          },
+          "tags": ["Matchmaking"]
+        }
+      },
+      "/v1/matchmaking/tickets/{ticketId}": {
+        "get": {
+          "operationId": "getMatchmakingTicket",
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/MatchmakingTicket"
+                  }
+                }
+              }
+            },
+            "401": {
+              "$ref": "#/components/responses/Unauthorized"
+            },
+            "404": {
+              "$ref": "#/components/responses/NotFound"
+            },
+            "503": {
+              "$ref": "#/components/responses/ServiceUnavailable"
+            }
+          },
+          "tags": ["Matchmaking"]
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TicketId"
+          }
+        ]
+      },
+      "/v1/matchmaking/tickets/{ticketId}/cancel": {
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TicketId"
+          }
+        ],
+        "post": {
+          "operationId": "cancelMatchmakingTicket",
+          "parameters": [
+            {
+              "$ref": "#/components/parameters/IdempotencyKey"
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/MatchmakingTicket"
+                  }
+                }
+              },
+              "headers": {
+                "Idempotency-Replayed": {
+                  "$ref": "#/components/headers/IdempotencyReplayed"
+                }
+              }
+            },
+            "401": {
+              "$ref": "#/components/responses/Unauthorized"
+            },
+            "404": {
+              "$ref": "#/components/responses/NotFound"
+            },
+            "409": {
+              "$ref": "#/components/responses/Conflict"
+            },
+            "503": {
+              "$ref": "#/components/responses/ServiceUnavailable"
+            }
+          },
+          "tags": ["Matchmaking"]
+        }
+      },
+      "/v1/matchmaking/tickets/{ticketId}/ready": {
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TicketId"
+          }
+        ],
+        "post": {
+          "operationId": "confirmMatchmakingReady",
+          "parameters": [
+            {
+              "$ref": "#/components/parameters/IdempotencyKey"
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/MatchmakingTicket"
+                  }
+                }
+              },
+              "headers": {
+                "Idempotency-Replayed": {
+                  "$ref": "#/components/headers/IdempotencyReplayed"
+                }
+              }
+            },
+            "401": {
+              "$ref": "#/components/responses/Unauthorized"
+            },
+            "404": {
+              "$ref": "#/components/responses/NotFound"
+            },
+            "409": {
+              "$ref": "#/components/responses/Conflict"
+            },
+            "503": {
+              "$ref": "#/components/responses/ServiceUnavailable"
+            }
+          },
+          "tags": ["Matchmaking"]
+        }
+      },
+      "/v1/profile": {
+        "patch": {
+          "operationId": "updateCurrentProfile",
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateProfileRequest"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/PublicProfile"
+                  }
+                }
+              }
+            },
+            "400": {
+              "$ref": "#/components/responses/BadRequest"
+            },
+            "401": {
+              "$ref": "#/components/responses/Unauthorized"
+            },
+            "403": {
+              "$ref": "#/components/responses/Forbidden"
+            },
+            "503": {
+              "$ref": "#/components/responses/ServiceUnavailable"
+            }
+          },
+          "tags": ["Profile"]
+        }
+      },
+      "/v1/profiles/{userId}": {
+        "get": {
+          "operationId": "getPublicProfile",
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/PublicProfile"
+                  }
+                }
+              }
+            },
+            "401": {
+              "$ref": "#/components/responses/Unauthorized"
+            },
+            "404": {
+              "$ref": "#/components/responses/NotFound"
+            },
+            "503": {
+              "$ref": "#/components/responses/ServiceUnavailable"
+            }
+          },
+          "tags": ["Profile"]
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "/v1/realtime/events": {
+        "get": {
+          "operationId": "resumeRealtimeEvents",
+          "parameters": [
+            {
+              "in": "query",
+              "name": "afterCursor",
+              "required": false,
+              "schema": {
+                "default": 0,
+                "minimum": 0,
+                "type": "integer"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/RealtimeEventPage"
+                  }
+                }
+              }
+            },
+            "400": {
+              "$ref": "#/components/responses/BadRequest"
+            },
+            "401": {
+              "$ref": "#/components/responses/Unauthorized"
+            },
+            "503": {
+              "$ref": "#/components/responses/ServiceUnavailable"
+            }
+          },
+          "tags": ["Realtime"]
+        }
       }
     },
     "security": [
@@ -265,7 +1332,25 @@
     ],
     "tags": [
       {
+        "name": "Account"
+      },
+      {
         "name": "Health"
+      },
+      {
+        "name": "Identity"
+      },
+      {
+        "name": "Matches"
+      },
+      {
+        "name": "Matchmaking"
+      },
+      {
+        "name": "Profile"
+      },
+      {
+        "name": "Realtime"
       }
     ],
     "x-project-booth-api-conventions": {

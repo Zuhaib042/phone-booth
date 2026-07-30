@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  validateClientMessageV1,
   validateProtocolErrorV1,
   validateServerEventEnvelopeV1,
   type RealtimeContractValidation,
@@ -157,4 +158,39 @@ test("protocol errors reject unsafe details and inconsistent recovery fields", (
   for (const [fixture, expectedRule] of cases) {
     assertInvalid(validateProtocolErrorV1(fixture), expectedRule);
   }
+});
+
+test("client connection messages are versioned and bounded", () => {
+  assert.equal(
+    validateClientMessageV1({
+      schemaVersion: 1,
+      type: "connection.resume",
+      afterCursor: 42,
+    }).valid,
+    true,
+  );
+  assert.equal(
+    validateClientMessageV1({
+      schemaVersion: 1,
+      type: "connection.state",
+      state: "foreground",
+    }).valid,
+    true,
+  );
+  assertInvalid(
+    validateClientMessageV1({
+      schemaVersion: 2,
+      type: "connection.resume",
+      afterCursor: 0,
+    }),
+    "schema.oneOf",
+  );
+  assertInvalid(
+    validateClientMessageV1({
+      schemaVersion: 1,
+      type: "connection.resume",
+      afterCursor: -1,
+    }),
+    "schema.oneOf",
+  );
 });

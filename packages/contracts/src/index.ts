@@ -5,6 +5,7 @@ export {
   type ContractCompatibilityIssueKind,
 } from "./compatibility.js";
 export {
+  CLIENT_MESSAGE_V1_SCHEMA,
   CLIENT_INTERNAL_FIELD_NAMES,
   PLAYER_PRIVATE_FIELD_NAMES,
   PROTOCOL_ERROR_CODES,
@@ -12,7 +13,9 @@ export {
   REALTIME_AUDIENCES,
   SERVER_EVENT_ENVELOPE_V1_SCHEMA,
   validateProtocolErrorV1,
+  validateClientMessageV1,
   validateServerEventEnvelopeV1,
+  type ClientMessageV1,
   type JsonObject,
   type JsonValue,
   type ProtocolErrorCode,

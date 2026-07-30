@@ -35,6 +35,18 @@ export interface ReliableJobConfig {
   readonly pollIntervalMilliseconds: number;
 }
 
+export interface MatchmakingConfig {
+  readonly lobbyReadyTimeoutSeconds: number;
+  readonly readyTimeoutSeconds: number;
+  readonly recentPairingWindowSeconds: number;
+}
+
+export interface RealtimeConfig {
+  readonly heartbeatIntervalMilliseconds: number;
+  readonly heartbeatTimeoutMilliseconds: number;
+  readonly resumeLimit: number;
+}
+
 export interface DatastoreConfig {
   readonly databaseUrl: string;
   readonly valkeyUrl: string;
@@ -310,5 +322,57 @@ export function loadReliableJobConfig(
       25,
       60_000,
     ),
+  };
+}
+
+export function loadMatchmakingConfig(
+  environment: Environment = process.env,
+): MatchmakingConfig {
+  return {
+    lobbyReadyTimeoutSeconds: readInteger(
+      environment,
+      "MATCH_LOBBY_READY_TIMEOUT_SECONDS",
+      30,
+      5,
+      300,
+    ),
+    readyTimeoutSeconds: readInteger(
+      environment,
+      "MATCHMAKING_READY_TIMEOUT_SECONDS",
+      15,
+      5,
+      120,
+    ),
+    recentPairingWindowSeconds: readInteger(
+      environment,
+      "MATCHMAKING_RECENT_PAIRING_SECONDS",
+      86_400,
+      0,
+      2_592_000,
+    ),
+  };
+}
+
+export function loadRealtimeConfig(
+  environment: Environment = process.env,
+): RealtimeConfig {
+  const heartbeatIntervalMilliseconds = readInteger(
+    environment,
+    "REALTIME_HEARTBEAT_INTERVAL_MS",
+    10_000,
+    1_000,
+    60_000,
+  );
+  const heartbeatTimeoutMilliseconds = readInteger(
+    environment,
+    "REALTIME_HEARTBEAT_TIMEOUT_MS",
+    30_000,
+    heartbeatIntervalMilliseconds + 1,
+    180_000,
+  );
+  return {
+    heartbeatIntervalMilliseconds,
+    heartbeatTimeoutMilliseconds,
+    resumeLimit: readInteger(environment, "REALTIME_RESUME_LIMIT", 100, 1, 500),
   };
 }

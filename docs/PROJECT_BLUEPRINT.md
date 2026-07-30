@@ -1,7 +1,7 @@
 # Project Booth — Milestone Blueprint
 
 **Status:** Active execution plan  
-**Version:** 0.6<br>
+**Version:** 0.7<br>
 **Framework decision:** Direct Fastify locked for the MVP  
 **Product source:** [MVP Product Specification](MVP_PRODUCT_SPEC.md)  
 **Architecture source:** [Technical Architecture](TECHNICAL_ARCHITECTURE.md)
@@ -14,9 +14,9 @@ Only one chunk is active at a time. Finishing a milestone does not authorize sta
 
 ### Current execution status
 
-- Completed: M0.1–M0.3, M1.1–M1.7, M2.1–M2.5, M3.1–M3.8, M4.1–M4.7, and M5.1–M5.6
+- Completed: M0.1–M0.3, M1.1–M1.7, M2.1–M2.5, M3.1–M3.8, M4.1–M4.7, M5.1–M5.6, and M6.1–M6.7
 - Active: none
-- Next: M6.1 — Matchmaking ticket commands
+- Next: M7.1 — Match-private one-to-one threads
 - Last verified: 2026-07-30 with Node.js 24 LTS, pnpm 11, and Swift 6.3
 
 ## 2. Chunk rules
@@ -179,15 +179,15 @@ flowchart LR
 
 ## 11. M6 — Matchmaking and real-time delivery
 
-| Chunk | Concise change                                                                                   | Verification                                                                            |
-| ----- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
-| M6.1  | Add create, inspect, and cancel matchmaking-ticket commands.                                     | Duplicate tickets and cancel races are idempotent.                                      |
-| M6.2  | Add Valkey queue grouping by ruleset, region, language, compatibility, restrictions, and blocks. | Ineligible or mutually blocked players never share a proposed roster.                   |
-| M6.3  | Add ready confirmation and durable match creation.                                               | Failed readiness releases tickets without creating partial matches.                     |
-| M6.4  | Add authenticated WebSocket connection, heartbeat, and connection registry.                      | Invalid tokens fail; stale connections close; reconnect succeeds.                       |
-| M6.5  | Add recipient-safe outbox fan-out through Valkey.                                                | Private events reach only their intended account across two API instances.              |
-| M6.6  | Add snapshot plus cursor-based event resume.                                                     | Disconnect/reconnect to another instance produces no lost or duplicated visible effect. |
-| M6.7  | Extend the simulator into six networked test clients.                                            | Six clients match, enter a booth, and observe synchronized phase deadlines.             |
+| Chunk           | Concise change                                                                                   | Verification                                                                            |
+| --------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| M6.1 — Complete | Add create, inspect, and cancel matchmaking-ticket commands.                                     | Duplicate tickets and cancel races are idempotent.                                      |
+| M6.2 — Complete | Add Valkey queue grouping by ruleset, region, language, compatibility, restrictions, and blocks. | Ineligible or mutually blocked players never share a proposed roster.                   |
+| M6.3 — Complete | Add ready confirmation and durable match creation.                                               | Failed readiness releases tickets without creating partial matches.                     |
+| M6.4 — Complete | Add authenticated WebSocket connection, heartbeat, and connection registry.                      | Invalid tokens fail; stale connections close; reconnect succeeds.                       |
+| M6.5 — Complete | Add recipient-safe outbox fan-out through Valkey.                                                | Private events reach only their intended account across two API instances.              |
+| M6.6 — Complete | Add snapshot plus cursor-based event resume.                                                     | Disconnect/reconnect to another instance produces no lost or duplicated visible effect. |
+| M6.7 — Complete | Extend the simulator into six networked test clients.                                            | Six clients match, enter a booth, and observe synchronized phase deadlines.             |
 
 **Exit gate:** Six test clients form a match and survive API reconnection without sticky sessions.
 
@@ -338,14 +338,14 @@ This is post-MVP and begins only after iOS retention validates further investmen
 
 ## 22. Immediate next chunk
 
-The next implementation chunk is **M6.1 — Matchmaking ticket commands**.
+The next implementation chunk is **M7.1 — Match-private one-to-one threads**.
 
 It should create only:
 
-- Contract-first create, inspect, and cancel matchmaking-ticket operations
-- Durable ticket state scoped to an authenticated internal account
-- Idempotent duplicate creation and cancellation behavior
-- Focused command, race, and persistence tests
+- Durable thread membership scoped to one match
+- One private thread for each eligible contestant pair
+- Authorization that permits only current match participants
+- Focused persistence and cross-account access tests
 
-It must not implement Valkey queue grouping, ready confirmation, match
-creation, WebSockets, or event fan-out.
+It must not implement typed message filtering, moderation-provider calls,
+real-time message delivery, mutes, reports, or blocks.

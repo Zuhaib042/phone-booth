@@ -6,6 +6,8 @@ import {
   loadApiConfig,
   loadDatastoreConfig,
   loadIdentityConfig,
+  loadMatchmakingConfig,
+  loadRealtimeConfig,
   loadReliableJobConfig,
   loadWorkerConfig,
 } from "../src/config.js";
@@ -185,5 +187,37 @@ test("loadIdentityConfig requires the Apple audience and bounds lifetimes", () =
       error instanceof ConfigError &&
       error.message ===
         "REFRESH_TOKEN_TTL_SECONDS must be greater than ACCESS_TOKEN_TTL_SECONDS",
+  );
+});
+
+test("M6 timing and resume settings are bounded and internally consistent", () => {
+  assert.deepEqual(loadMatchmakingConfig({}), {
+    lobbyReadyTimeoutSeconds: 30,
+    readyTimeoutSeconds: 15,
+    recentPairingWindowSeconds: 86_400,
+  });
+  assert.deepEqual(loadRealtimeConfig({}), {
+    heartbeatIntervalMilliseconds: 10_000,
+    heartbeatTimeoutMilliseconds: 30_000,
+    resumeLimit: 100,
+  });
+  assert.throws(
+    () =>
+      loadRealtimeConfig({
+        REALTIME_HEARTBEAT_INTERVAL_MS: "10000",
+        REALTIME_HEARTBEAT_TIMEOUT_MS: "10000",
+      }),
+    (error: unknown) =>
+      error instanceof ConfigError &&
+      error.message.startsWith("REALTIME_HEARTBEAT_TIMEOUT_MS"),
+  );
+  assert.throws(
+    () =>
+      loadMatchmakingConfig({
+        MATCHMAKING_READY_TIMEOUT_SECONDS: "4",
+      }),
+    (error: unknown) =>
+      error instanceof ConfigError &&
+      error.message.startsWith("MATCHMAKING_READY_TIMEOUT_SECONDS"),
   );
 });

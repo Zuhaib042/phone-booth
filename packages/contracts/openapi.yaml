@@ -12,7 +12,7 @@ info:
     Identity endpoints exchange provider credentials for Project Booth
     sessions. Game endpoints trust only the resulting internal account and
     never a platform-provider identifier.
-  version: 0.2.0
+  version: 0.3.0
 
 x-project-booth-api-conventions:
   contractVersion: 1
@@ -43,6 +43,12 @@ tags:
     description: Private account state and deletion.
   - name: Profile
     description: Pseudonymous player profiles.
+  - name: Matchmaking
+    description: Durable queue tickets and ready confirmation.
+  - name: Matches
+    description: Match entry and recipient-safe snapshots.
+  - name: Realtime
+    description: Cursor-based recovery for real-time delivery.
 
 security:
   - bearerAuth: []
@@ -241,6 +247,208 @@ paths:
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
 
+  /v1/matchmaking/tickets:
+    post:
+      tags:
+        - Matchmaking
+      summary: Create or recover the account's active matchmaking ticket
+      operationId: createMatchmakingTicket
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMatchmakingTicketRequest"
+      responses:
+        "200":
+          description: The account already had an active ticket.
+          headers:
+            Idempotency-Replayed:
+              $ref: "#/components/headers/IdempotencyReplayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchmakingTicket"
+        "201":
+          description: A durable ticket was created.
+          headers:
+            Idempotency-Replayed:
+              $ref: "#/components/headers/IdempotencyReplayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchmakingTicket"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /v1/matchmaking/tickets/{ticketId}:
+    parameters:
+      - $ref: "#/components/parameters/TicketId"
+    get:
+      tags:
+        - Matchmaking
+      summary: Inspect a matchmaking ticket
+      operationId: getMatchmakingTicket
+      responses:
+        "200":
+          description: Current durable ticket state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchmakingTicket"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /v1/matchmaking/tickets/{ticketId}/cancel:
+    parameters:
+      - $ref: "#/components/parameters/TicketId"
+    post:
+      tags:
+        - Matchmaking
+      summary: Cancel a matchmaking ticket
+      operationId: cancelMatchmakingTicket
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: The terminal or newly cancelled ticket.
+          headers:
+            Idempotency-Replayed:
+              $ref: "#/components/headers/IdempotencyReplayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchmakingTicket"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /v1/matchmaking/tickets/{ticketId}/ready:
+    parameters:
+      - $ref: "#/components/parameters/TicketId"
+    post:
+      tags:
+        - Matchmaking
+      summary: Confirm readiness for a proposed roster
+      operationId: confirmMatchmakingReady
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Ticket state after the idempotent ready command.
+          headers:
+            Idempotency-Replayed:
+              $ref: "#/components/headers/IdempotencyReplayed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchmakingTicket"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /v1/matches/{matchId}/ready:
+    parameters:
+      - $ref: "#/components/parameters/MatchId"
+    post:
+      tags:
+        - Matches
+      summary: Confirm that the contestant entered the booth
+      operationId: confirmBoothReady
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Current match entry state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchReady"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /v1/matches/{matchId}/snapshot:
+    parameters:
+      - $ref: "#/components/parameters/MatchId"
+    get:
+      tags:
+        - Matches
+      summary: Get an account-safe authoritative match snapshot
+      operationId: getMatchSnapshot
+      responses:
+        "200":
+          description: Snapshot and the recipient cursor captured with it.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchSnapshot"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /v1/realtime/events:
+    get:
+      tags:
+        - Realtime
+      summary: Resume the authenticated recipient event stream
+      operationId: resumeRealtimeEvents
+      parameters:
+        - name: afterCursor
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        "200":
+          description: A strictly ordered page of recipient-safe events.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RealtimeEventPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -251,6 +459,20 @@ components:
         clients. Authentication behavior is implemented in a later milestone.
 
   parameters:
+    MatchId:
+      name: matchId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    TicketId:
+      name: ticketId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
     Cursor:
       name: cursor
       in: query
@@ -481,6 +703,257 @@ components:
           enum:
             - pending
             - completed
+
+    CreateMatchmakingTicketRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - compatibilityVersion
+        - language
+        - region
+      properties:
+        compatibilityVersion:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        language:
+          type: string
+          pattern: ^[a-z]{2,3}(?:-[A-Z]{2})?$
+        region:
+          type: string
+          pattern: ^[a-z0-9][a-z0-9-]{0,31}$
+
+    MatchmakingTicket:
+      type: object
+      additionalProperties: false
+      required:
+        - compatibilityVersion
+        - createdAt
+        - language
+        - readyConfirmed
+        - region
+        - rulesetId
+        - rulesetVersion
+        - status
+        - ticketId
+        - updatedAt
+      properties:
+        compatibilityVersion:
+          type: integer
+          minimum: 1
+        createdAt:
+          type: string
+          format: date-time
+        language:
+          type: string
+        matchId:
+          type: string
+          format: uuid
+        proposalId:
+          type: string
+          format: uuid
+        readyConfirmed:
+          type: boolean
+        readyDeadline:
+          type: string
+          format: date-time
+        region:
+          type: string
+        rulesetId:
+          type: string
+          format: uuid
+        rulesetVersion:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          enum:
+            - queued
+            - proposed
+            - matched
+            - cancelled
+        ticketId:
+          type: string
+          format: uuid
+        updatedAt:
+          type: string
+          format: date-time
+
+    MatchReady:
+      type: object
+      additionalProperties: false
+      required:
+        - matchId
+        - matchVersion
+        - phase
+        - phaseDeadline
+        - ready
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchVersion:
+          type: integer
+          minimum: 1
+        phase:
+          type: string
+        phaseDeadline:
+          type:
+            - string
+            - "null"
+          format: date-time
+        ready:
+          type: boolean
+
+    MatchSnapshotRosterEntry:
+      type: object
+      additionalProperties: false
+      required:
+        - avatarKey
+        - displayName
+        - ready
+        - status
+        - userId
+      properties:
+        avatarKey:
+          type: string
+        displayName:
+          type: string
+        ready:
+          type: boolean
+        status:
+          type: string
+          enum:
+            - active
+            - eliminated
+        userId:
+          type: string
+          format: uuid
+
+    MatchSnapshot:
+      type: object
+      additionalProperties: false
+      required:
+        - lastRecipientCursor
+        - matchId
+        - matchVersion
+        - phase
+        - phaseDeadline
+        - roster
+        - ruleset
+        - self
+      properties:
+        lastRecipientCursor:
+          type: integer
+          minimum: 0
+        matchId:
+          type: string
+          format: uuid
+        matchVersion:
+          type: integer
+          minimum: 1
+        phase:
+          type: string
+        phaseDeadline:
+          type:
+            - string
+            - "null"
+          format: date-time
+        roster:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/MatchSnapshotRosterEntry"
+        ruleset:
+          type: object
+          additionalProperties: false
+          required:
+            - rulesetId
+            - rulesetVersion
+          properties:
+            rulesetId:
+              type: string
+              format: uuid
+            rulesetVersion:
+              type: integer
+              minimum: 1
+        self:
+          type: object
+          additionalProperties: false
+          required:
+            - ready
+            - userId
+          properties:
+            ready:
+              type: boolean
+            userId:
+              type: string
+              format: uuid
+
+    RealtimeEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - schemaVersion
+        - eventId
+        - type
+        - occurredAt
+        - matchId
+        - matchVersion
+        - recipientCursor
+        - audience
+        - payload
+      properties:
+        schemaVersion:
+          type: integer
+          const: 1
+        eventId:
+          type: string
+          format: uuid
+        type:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+        matchId:
+          type: string
+          format: uuid
+        matchVersion:
+          type: integer
+          minimum: 1
+        recipientCursor:
+          type: integer
+          minimum: 1
+        audience:
+          type: string
+          enum:
+            - player
+            - participants
+            - active
+        recipientUserId:
+          type: string
+          format: uuid
+        payload:
+          type: object
+          additionalProperties: true
+
+    RealtimeEventPage:
+      type: object
+      additionalProperties: false
+      required:
+        - events
+        - hasMore
+        - nextCursor
+      properties:
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/RealtimeEvent"
+        hasMore:
+          type: boolean
+        nextCursor:
+          type: integer
+          minimum: 0
 
     ErrorResponse:
       type: object

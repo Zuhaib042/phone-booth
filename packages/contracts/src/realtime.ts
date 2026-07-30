@@ -88,6 +88,18 @@ export interface ProtocolErrorV1 {
   readonly resumeFromCursor?: number;
 }
 
+export type ClientMessageV1 =
+  | {
+      readonly schemaVersion: 1;
+      readonly type: "connection.resume";
+      readonly afterCursor: number;
+    }
+  | {
+      readonly schemaVersion: 1;
+      readonly type: "connection.state";
+      readonly state: "background" | "foreground";
+    };
+
 export interface RealtimeValidationIssue {
   readonly path: string;
   readonly rule: string;
@@ -314,6 +326,37 @@ export const PROTOCOL_ERROR_V1_SCHEMA = {
   ],
 } as const;
 
+export const CLIENT_MESSAGE_V1_SCHEMA = {
+  $schema: "https://json-schema.org/draft/2020-12/schema",
+  $id: "urn:project-booth:schema:client-message:v1",
+  oneOf: [
+    {
+      type: "object",
+      additionalProperties: false,
+      required: ["schemaVersion", "type", "afterCursor"],
+      properties: {
+        schemaVersion: { const: 1 },
+        type: { const: "connection.resume" },
+        afterCursor: {
+          type: "integer",
+          minimum: 0,
+          maximum: MAX_SAFE_INTEGER,
+        },
+      },
+    },
+    {
+      type: "object",
+      additionalProperties: false,
+      required: ["schemaVersion", "type", "state"],
+      properties: {
+        schemaVersion: { const: 1 },
+        type: { const: "connection.state" },
+        state: { enum: ["foreground", "background"] },
+      },
+    },
+  ],
+} as const;
+
 const ajv = new Ajv2020({ allErrors: true, strict: true });
 ajv.addFormat(CANONICAL_UTC_FORMAT, {
   type: "string",
@@ -325,6 +368,9 @@ const validateEventSchema = ajv.compile<ServerEventEnvelopeV1>(
 );
 const validateProtocolErrorSchema = ajv.compile<ProtocolErrorV1>(
   PROTOCOL_ERROR_V1_SCHEMA,
+);
+const validateClientMessageSchema = ajv.compile<ClientMessageV1>(
+  CLIENT_MESSAGE_V1_SCHEMA,
 );
 
 function escapedPointerSegment(value: string): string {
@@ -374,5 +420,16 @@ export function validateProtocolErrorV1(
     : {
         valid: false,
         issues: validationIssues(validateProtocolErrorSchema.errors),
+      };
+}
+
+export function validateClientMessageV1(
+  value: unknown,
+): RealtimeContractValidation<ClientMessageV1> {
+  return validateClientMessageSchema(value)
+    ? { valid: true, value }
+    : {
+        valid: false,
+        issues: validationIssues(validateClientMessageSchema.errors),
       };
 }

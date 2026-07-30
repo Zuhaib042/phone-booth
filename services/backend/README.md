@@ -4,24 +4,30 @@ The backend package contains the Project Booth Fastify API and worker processes.
 
 ## Environment
 
-| Variable                         |                           Default | Accepted values                                                    |
-| -------------------------------- | --------------------------------: | ------------------------------------------------------------------ |
-| `HOST`                           |                         `0.0.0.0` | Any non-empty bind host                                            |
-| `PORT`                           |                            `3000` | Integer from `0` to `65535`; use `0` only for ephemeral test ports |
-| `NODE_ENV`                       |                     `development` | `development`, `test`, or `production`                             |
-| `LOG_LEVEL`                      |                            `info` | `fatal`, `error`, `warn`, `info`, `debug`, `trace`, or `silent`    |
-| `DATABASE_URL`                   |   Required for datastore commands | `postgres:` or `postgresql:` connection URL                        |
-| `VALKEY_URL`                     |   Required for datastore commands | `redis:` or `rediss:` connection URL                               |
-| `WORKER_READY_FILE`              | `/tmp/project-booth-worker-ready` | Any non-empty worker-writable path                                 |
-| `WORKER_BATCH_SIZE`              |                              `25` | Integer from `1` to `100`                                          |
-| `WORKER_LEASE_MS`                |                           `30000` | Integer from `1000` to `300000`                                    |
-| `WORKER_POLL_INTERVAL_MS`        |                             `250` | Integer from `25` to `60000`                                       |
-| `OUTBOX_CHANNEL`                 |            `project-booth:events` | Any non-empty Valkey publish channel                               |
-| `IDENTITY_PROVIDER`              |                        `disabled` | `disabled`, `development`, or `apple`                              |
-| `APPLE_CLIENT_ID`                |           Required for Apple auth | Sign in with Apple service identifier / token audience             |
-| `ACCESS_TOKEN_TTL_SECONDS`       |                             `900` | Integer from `60` to `3600`                                        |
-| `REFRESH_TOKEN_TTL_SECONDS`      |                         `2592000` | Integer from `3600` to `7776000`                                   |
-| `ACCOUNT_DELETION_DELAY_SECONDS` |                               `0` | Integer from `0` to `604800`                                       |
+| Variable                             |                           Default | Accepted values                                                    |
+| ------------------------------------ | --------------------------------: | ------------------------------------------------------------------ |
+| `HOST`                               |                         `0.0.0.0` | Any non-empty bind host                                            |
+| `PORT`                               |                            `3000` | Integer from `0` to `65535`; use `0` only for ephemeral test ports |
+| `NODE_ENV`                           |                     `development` | `development`, `test`, or `production`                             |
+| `LOG_LEVEL`                          |                            `info` | `fatal`, `error`, `warn`, `info`, `debug`, `trace`, or `silent`    |
+| `DATABASE_URL`                       |   Required for datastore commands | `postgres:` or `postgresql:` connection URL                        |
+| `VALKEY_URL`                         |   Required for datastore commands | `redis:` or `rediss:` connection URL                               |
+| `WORKER_READY_FILE`                  | `/tmp/project-booth-worker-ready` | Any non-empty worker-writable path                                 |
+| `WORKER_BATCH_SIZE`                  |                              `25` | Integer from `1` to `100`                                          |
+| `WORKER_LEASE_MS`                    |                           `30000` | Integer from `1000` to `300000`                                    |
+| `WORKER_POLL_INTERVAL_MS`            |                             `250` | Integer from `25` to `60000`                                       |
+| `OUTBOX_CHANNEL`                     |            `project-booth:events` | Any non-empty Valkey publish channel                               |
+| `IDENTITY_PROVIDER`                  |                        `disabled` | `disabled`, `development`, or `apple`                              |
+| `APPLE_CLIENT_ID`                    |           Required for Apple auth | Sign in with Apple service identifier / token audience             |
+| `ACCESS_TOKEN_TTL_SECONDS`           |                             `900` | Integer from `60` to `3600`                                        |
+| `REFRESH_TOKEN_TTL_SECONDS`          |                         `2592000` | Integer from `3600` to `7776000`                                   |
+| `ACCOUNT_DELETION_DELAY_SECONDS`     |                               `0` | Integer from `0` to `604800`                                       |
+| `MATCHMAKING_READY_TIMEOUT_SECONDS`  |                              `15` | Integer from `5` to `120`                                          |
+| `MATCH_LOBBY_READY_TIMEOUT_SECONDS`  |                              `30` | Integer from `5` to `300`                                          |
+| `MATCHMAKING_RECENT_PAIRING_SECONDS` |                           `86400` | Integer from `0` to `2592000`                                      |
+| `REALTIME_HEARTBEAT_INTERVAL_MS`     |                           `10000` | Integer from `1000` to `60000`                                     |
+| `REALTIME_HEARTBEAT_TIMEOUT_MS`      |                           `30000` | Greater than the heartbeat interval, up to `180000`                |
+| `REALTIME_RESUME_LIMIT`              |                             `100` | Integer from `1` to `500`                                          |
 
 ## Commands
 
@@ -57,6 +63,25 @@ name, avatar key, and progression level.
 sessions, and schedules worker cleanup. Cleanup removes provider identities,
 devices, sessions, and the profile while retaining a deleted user tombstone for
 durable match-history references.
+
+## Matchmaking and real-time delivery
+
+Authenticated clients create one durable ticket through
+`POST /v1/matchmaking/tickets`. Queue groups are separated by immutable
+ruleset, region, language, compatibility version, and safety restriction pool;
+every proposed roster is revalidated against account eligibility and mutual
+blocks in a serializable PostgreSQL transaction. Ready confirmation creates
+the match, roster, deadline job, recent-pairing records, and initial
+recipient-safe events atomically.
+
+The WebSocket endpoint is `/v1/realtime`. Clients authenticate with the
+`Authorization: Bearer` header or the `bearer.<access-token>` subprotocol,
+respond to heartbeat pings, fetch `/v1/matches/{matchId}/snapshot` after
+reconnecting, and then resume from `/v1/realtime/events` or a
+`connection.resume` WebSocket message. Recipient cursors are durable per
+account. Valkey carries disposable queue membership, connection presence, and
+cross-instance fan-out; PostgreSQL retains tickets, matches, and resumable
+events.
 
 ## PostgreSQL persistence
 

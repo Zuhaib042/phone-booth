@@ -170,6 +170,7 @@ test(
         "0001_m4_persistence.sql",
         "0002_immutable_rulesets.sql",
         "0003_m5_identity_accounts_profiles.sql",
+        "0004_m6_matchmaking_realtime.sql",
       ]);
       assert.deepEqual(firstMigration.pending, []);
       assert.deepEqual(secondMigration.pending, []);
@@ -186,14 +187,21 @@ test(
         tables.rows.map(({ table_name }) => table_name),
         [
           "account_deletion_requests",
+          "blocks",
           "devices",
           "idempotency_keys",
           "match_events",
           "match_players",
           "matches",
+          "matchmaking_proposals",
+          "matchmaking_safety",
+          "matchmaking_tickets",
           "outbox_events",
           "profiles",
           "provider_credentials",
+          "recent_pairings",
+          "recipient_events",
+          "recipient_streams",
           "rounds",
           "rulesets",
           "scheduled_jobs",
@@ -311,7 +319,7 @@ test(
           batchSize: 100,
         }),
       );
-      assert.equal(crashClaim.length, 2);
+      assert.equal(crashClaim.length, 12);
       const deliveredIds = crashClaim.map(({ eventId }) => eventId);
       const reclaimed = await transactions.run((client) =>
         outbox.claim(client, {
@@ -335,10 +343,10 @@ test(
           reclaimed,
           () => new Date("2026-07-24T12:01:32.000Z"),
         ),
-        2,
+        12,
       );
-      assert.equal(new Set(deliveredIds).size, 2);
-      assert.equal(deliveredIds.length, 4);
+      assert.equal(new Set(deliveredIds).size, 12);
+      assert.equal(deliveredIds.length, 24);
 
       const deadlineHandler = new MatchDeadlineHandler(matches, outbox, jobs);
       const scheduledProcessor = new ScheduledJobProcessor(

@@ -1,8 +1,7 @@
-import { randomUUID } from "node:crypto";
-
 import type { MatchId, UserId, UtcTimestamp } from "@project-booth/domain";
 import type { MatchState } from "@project-booth/game-engine";
 
+import { PostgresRealtimeEventRepository } from "../realtime/events.js";
 import {
   hashIdempotencyRequest,
   type IdempotencyIdentity,
@@ -10,12 +9,8 @@ import {
   type StoredHttpResponse,
 } from "./idempotency.js";
 import type { JsonValue } from "./json.js";
-import { toJsonObject } from "./json.js";
-import {
-  type MatchEventRecord,
-  PostgresMatchRepository,
-} from "./match-repository.js";
-import { type NewOutboxEvent, PostgresOutboxRepository } from "./outbox.js";
+import { PostgresMatchRepository } from "./match-repository.js";
+import { PostgresOutboxRepository } from "./outbox.js";
 import { PostgresScheduledJobRepository } from "./scheduled-jobs.js";
 import type { PostgresTransactionRunner } from "./transaction.js";
 
@@ -57,50 +52,6 @@ function eventType(event: unknown): string {
   return event.type;
 }
 
-function persistenceEvents(
-  matchId: MatchId,
-  state: MatchState,
-  events: readonly unknown[],
-  occurredAt: UtcTimestamp,
-): {
-  readonly matchEvents: readonly MatchEventRecord[];
-  readonly outboxEvents: readonly NewOutboxEvent[];
-} {
-  const records = events.map((event, sequence) => {
-    const id = randomUUID();
-    const type = eventType(event);
-    const payload = toJsonObject(event);
-    return {
-      match: {
-        eventId: id,
-        matchId,
-        matchVersion: state.version,
-        sequence,
-        eventType: type,
-        payload,
-        occurredAt,
-      },
-      outbox: {
-        eventId: id,
-        aggregateType: "match",
-        aggregateId: matchId,
-        eventType: type,
-        payload: toJsonObject({
-          eventId: id,
-          matchId,
-          matchVersion: state.version,
-          event: payload,
-        }),
-        occurredAt,
-      },
-    };
-  });
-  return {
-    matchEvents: records.map(({ match }) => match),
-    outboxEvents: records.map(({ outbox }) => outbox),
-  };
-}
-
 export class PostgresMatchCommandExecutor {
   public constructor(
     private readonly transactions: PostgresTransactionRunner,
@@ -108,6 +59,7 @@ export class PostgresMatchCommandExecutor {
     private readonly idempotency = new PostgresIdempotencyRepository(),
     private readonly outbox = new PostgresOutboxRepository(),
     private readonly scheduledJobs = new PostgresScheduledJobRepository(),
+    private readonly realtimeEvents = new PostgresRealtimeEventRepository(),
   ) {}
 
   public async createMatch(
@@ -170,10 +122,15 @@ export class PostgresMatchCommandExecutor {
           transition.state,
           input.occurredAt,
         );
-        const records = persistenceEvents(
-          input.matchId,
+        const records = await this.realtimeEvents.appendProjectedEvents(
+          client,
           transition.state,
-          transition.events,
+          transition.events.map((event) => ({
+            audience: "participants" as const,
+            event,
+            eventType: eventType(event),
+            matchVersion: transition.state.version,
+          })),
           input.occurredAt,
         );
         await this.matches.appendEvents(client, records.matchEvents);

@@ -82,7 +82,7 @@ function identityUnavailable(): IdentityError {
   );
 }
 
-function errorResponse(
+export function identityErrorResponse(
   request: FastifyRequest,
   reply: FastifyReply,
   error: IdentityError,
@@ -115,7 +115,7 @@ function bearerToken(request: FastifyRequest): string {
   return match[1];
 }
 
-async function authenticatedSession(
+export async function authenticatedSession(
   request: FastifyRequest,
   service: IdentityApplication | undefined,
 ): Promise<AuthenticatedSession> {
@@ -134,7 +134,7 @@ async function handle<Result>(
     return await action();
   } catch (error: unknown) {
     if (error instanceof IdentityError) {
-      return errorResponse(request, reply, error);
+      return identityErrorResponse(request, reply, error);
     }
     throw error;
   }

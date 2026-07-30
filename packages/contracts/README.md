@@ -33,6 +33,8 @@ emits explicit `undefined` values for some optional Fetch fields.
 - `PROTOCOL_ERROR_V1_SCHEMA` exposes stable error codes and only the recovery
   metadata allowed for each code. Free-form server messages, stacks, and
   arbitrary details are rejected.
+- `CLIENT_MESSAGE_V1_SCHEMA` accepts only bounded cursor-resume and
+  foreground/background registration messages.
 
 The payload guard is a defense-in-depth boundary, not permission to publish
 arbitrary payloads. Later feature chunks must add event-specific projection
@@ -44,7 +46,7 @@ malformed, routing, recovery, and recursive private-field leakage fixtures.
 ## Compatibility policy
 
 `compatibility/baselines/contracts.v1.json` is the reviewed compatibility
-surface for OpenAPI and both real-time schemas. Documentation annotations are
+surface for OpenAPI and all three real-time schemas. Documentation annotations are
 excluded. New paths, components, responses, tags, and optional properties are
 additive; removing or changing an existing member, tightening a bound, adding
 a required field, or changing an enum fails the check.

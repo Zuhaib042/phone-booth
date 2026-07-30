@@ -9,6 +9,14 @@ import {
   ACCOUNT_DELETION_JOB_KIND,
   AccountDeletionHandler,
 } from "../identity/service.js";
+import {
+  MATCHMAKING_READY_TIMEOUT_JOB_KIND,
+  MatchmakingReadyTimeoutHandler,
+} from "../matchmaking/service.js";
+import {
+  MatchmakingQueueReconciler,
+  ValkeyMatchmakingQueue,
+} from "../matchmaking/queue.js";
 import type { WorkerJob } from "../worker.js";
 import { createDatabasePool } from "./database.js";
 import { MatchDeadlineHandler } from "./deadline-handler.js";
@@ -67,6 +75,7 @@ class ReliableJobLoop {
     private readonly workerId: string,
     private readonly outbox: OutboxProcessor,
     private readonly scheduled: ScheduledJobProcessor,
+    private readonly reconcileMatchmaking: () => Promise<number>,
   ) {}
 
   public start(): void {
@@ -94,6 +103,7 @@ class ReliableJobLoop {
   }
 
   private async poll(): Promise<void> {
+    await this.reconcileMatchmaking();
     const now = new Date();
     const claimOptions = {
       workerId: this.workerId,
@@ -158,6 +168,11 @@ export class ReliablePostgresWorkerJob implements WorkerJob {
         scheduledRepository,
       );
       const accountDeletionHandler = new AccountDeletionHandler();
+      const matchmakingTimeoutHandler = new MatchmakingReadyTimeoutHandler();
+      const matchmakingReconciler = new MatchmakingQueueReconciler(
+        transactions,
+        new ValkeyMatchmakingQueue(this.valkey),
+      );
       const recovery = new MatchRecoveryService(
         transactions,
         undefined,
@@ -187,9 +202,25 @@ export class ReliablePostgresWorkerJob implements WorkerJob {
             if (job.kind === ACCOUNT_DELETION_JOB_KIND) {
               return accountDeletionHandler.handle(client, job, occurredAt);
             }
+            if (job.kind === MATCHMAKING_READY_TIMEOUT_JOB_KIND) {
+              const { proposalId } = job.payload as {
+                readonly proposalId?: unknown;
+              };
+              if (typeof proposalId !== "string") {
+                throw new Error(
+                  "Matchmaking ready-timeout job has an invalid proposalId",
+                );
+              }
+              return matchmakingTimeoutHandler.handle(
+                client,
+                proposalId,
+                occurredAt,
+              );
+            }
             throw new Error(`Unsupported scheduled job kind: ${job.kind}`);
           },
         ),
+        () => matchmakingReconciler.synchronize(),
       );
       this.loop.start();
     } catch (error: unknown) {

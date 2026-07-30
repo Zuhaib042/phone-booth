@@ -1,19 +1,32 @@
 import type { FastifyInstance } from "fastify";
+import { Redis as Valkey } from "iovalkey";
 import type { Pool } from "pg";
 
 import { buildApi } from "./app.js";
 import {
   loadApiConfig,
+  loadDatastoreConfig,
   loadIdentityConfig,
-  loadPostgresConfig,
+  loadMatchmakingConfig,
+  loadRealtimeConfig,
+  loadReliableJobConfig,
   type ApiConfig,
   type Environment,
 } from "./config.js";
 import { createIdentityProvider } from "./identity/provider.js";
 import { PostgresIdentityService } from "./identity/service.js";
+import { PostgresMatchApplication } from "./matches/service.js";
+import { ValkeyMatchmakingQueue } from "./matchmaking/queue.js";
+import { PostgresMatchmakingService } from "./matchmaking/service.js";
 import { createDatabasePool } from "./persistence/database.js";
 import { runMigrations } from "./persistence/migrations.js";
+import { PostgresMatchCommandExecutor } from "./persistence/match-command-executor.js";
 import { PostgresTransactionRunner } from "./persistence/transaction.js";
+import { PostgresRealtimeQueryService } from "./realtime/events.js";
+import {
+  RealtimeGateway,
+  ValkeyConnectionPresenceStore,
+} from "./realtime/websocket.js";
 import {
   subscribeToShutdownSignals,
   type ShutdownSignal,
@@ -97,20 +110,69 @@ export async function startApi(
   const identityConfig = loadIdentityConfig(environment);
   let pool: Pool | undefined;
   let identityService: PostgresIdentityService | undefined;
+  let valkey: Valkey | undefined;
+  let realtimeSubscriber: Valkey | undefined;
+  let realtimeGateway: RealtimeGateway | undefined;
+  let matchmakingService: PostgresMatchmakingService | undefined;
+  let realtimeQueryService: PostgresRealtimeQueryService | undefined;
+  let matchService: PostgresMatchApplication | undefined;
 
   if (identityConfig.provider !== "disabled") {
+    const datastores = loadDatastoreConfig(environment);
+    const realtimeConfig = loadRealtimeConfig(environment);
     pool = createDatabasePool({
       applicationName: "project-booth-api",
-      connectionString: loadPostgresConfig(environment).databaseUrl,
+      connectionString: datastores.databaseUrl,
+    });
+    valkey = new Valkey(datastores.valkeyUrl, {
+      connectTimeout: 5_000,
+      lazyConnect: true,
+      maxRetriesPerRequest: 1,
+    });
+    realtimeSubscriber = new Valkey(datastores.valkeyUrl, {
+      connectTimeout: 5_000,
+      lazyConnect: true,
+      maxRetriesPerRequest: 1,
     });
     try {
-      await runMigrations(pool);
+      await Promise.all([
+        runMigrations(pool),
+        valkey.connect(),
+        realtimeSubscriber.connect(),
+      ]);
+      const transactions = new PostgresTransactionRunner(pool);
       identityService = new PostgresIdentityService(
-        new PostgresTransactionRunner(pool),
+        transactions,
         createIdentityProvider(identityConfig),
         identityConfig,
       );
+      matchmakingService = new PostgresMatchmakingService(
+        transactions,
+        new ValkeyMatchmakingQueue(valkey),
+        loadMatchmakingConfig(environment),
+      );
+      realtimeQueryService = new PostgresRealtimeQueryService((action) =>
+        transactions.run(action),
+      );
+      matchService = new PostgresMatchApplication(
+        new PostgresMatchCommandExecutor(transactions),
+      );
+      realtimeGateway = new RealtimeGateway(
+        identityService,
+        realtimeQueryService,
+        realtimeConfig,
+        realtimeSubscriber,
+        loadReliableJobConfig(environment).outboxChannel,
+        new ValkeyConnectionPresenceStore(
+          valkey,
+          `api-${process.pid}`,
+          realtimeConfig.heartbeatTimeoutMilliseconds * 2,
+        ),
+      );
+      await realtimeGateway.start();
     } catch (error: unknown) {
+      valkey.disconnect();
+      realtimeSubscriber.disconnect();
       await pool.end().catch(() => undefined);
       throw error;
     }
@@ -118,10 +180,24 @@ export async function startApi(
 
   const api = buildApi(
     config,
-    identityService === undefined ? {} : { identityService },
+    identityService === undefined
+      ? {}
+      : {
+          identityService,
+          matchmakingService: matchmakingService as PostgresMatchmakingService,
+          matchService: matchService as PostgresMatchApplication,
+          realtimeGateway: realtimeGateway as RealtimeGateway,
+          realtimeQueryService:
+            realtimeQueryService as PostgresRealtimeQueryService,
+          realtimeResumeLimit: loadRealtimeConfig(environment).resumeLimit,
+        },
   );
   if (pool !== undefined) {
-    api.addHook("onClose", async () => pool.end());
+    api.addHook("onClose", async () => {
+      await realtimeGateway?.stop();
+      valkey?.disconnect();
+      await pool.end();
+    });
   }
 
   try {

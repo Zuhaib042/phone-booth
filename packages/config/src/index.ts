@@ -1,3 +1,4 @@
+export { DEFAULT_RULESET_V1 } from "./default-ruleset.js";
 export {
   parseRulesetV1,
   RULESET_V1_SCHEMA,

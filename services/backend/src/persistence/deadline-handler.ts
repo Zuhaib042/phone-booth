@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 
 import {
   parseEntityId,
@@ -15,12 +15,9 @@ import {
 } from "@project-booth/game-engine";
 import type { PoolClient } from "pg";
 
-import { toJsonObject } from "./json.js";
-import {
-  type MatchEventRecord,
-  PostgresMatchRepository,
-} from "./match-repository.js";
-import { type NewOutboxEvent, PostgresOutboxRepository } from "./outbox.js";
+import { PostgresRealtimeEventRepository } from "../realtime/events.js";
+import { PostgresMatchRepository } from "./match-repository.js";
+import { PostgresOutboxRepository } from "./outbox.js";
 import {
   type ClaimedScheduledJob,
   MATCH_DEADLINE_JOB_KIND,
@@ -222,56 +219,12 @@ function advanceDeadline(
   return steps;
 }
 
-function persistenceEvents(
-  matchId: MatchId,
-  steps: readonly TransitionStep[],
-  occurredAt: UtcTimestamp,
-): {
-  readonly matchEvents: readonly MatchEventRecord[];
-  readonly outboxEvents: readonly NewOutboxEvent[];
-} {
-  const matchEvents: MatchEventRecord[] = [];
-  const outboxEvents: NewOutboxEvent[] = [];
-  for (const step of steps) {
-    for (const [sequence, event] of step.events.entries()) {
-      const payload = toJsonObject(event);
-      const { type } = payload;
-      if (typeof type !== "string") {
-        throw new TypeError("Scheduled transition event type is invalid");
-      }
-      const eventId = randomUUID();
-      matchEvents.push({
-        eventId,
-        matchId,
-        matchVersion: step.state.version,
-        sequence,
-        eventType: type,
-        payload,
-        occurredAt,
-      });
-      outboxEvents.push({
-        eventId,
-        aggregateType: "match",
-        aggregateId: matchId,
-        eventType: type,
-        payload: toJsonObject({
-          eventId,
-          matchId,
-          matchVersion: step.state.version,
-          event: payload,
-        }),
-        occurredAt,
-      });
-    }
-  }
-  return { matchEvents, outboxEvents };
-}
-
 export class MatchDeadlineHandler {
   public constructor(
     private readonly matches = new PostgresMatchRepository(),
     private readonly outbox = new PostgresOutboxRepository(),
     private readonly scheduledJobs = new PostgresScheduledJobRepository(),
+    private readonly realtimeEvents = new PostgresRealtimeEventRepository(),
   ) {}
 
   public async handle(
@@ -303,7 +256,29 @@ export class MatchDeadlineHandler {
     }
 
     await this.matches.save(client, current.version, finalState, occurredAt);
-    const events = persistenceEvents(expected.matchId, steps, occurredAt);
+    const events = await this.realtimeEvents.appendProjectedEvents(
+      client,
+      finalState,
+      steps.flatMap((step) =>
+        step.events.map((event) => {
+          if (
+            event === null ||
+            typeof event !== "object" ||
+            !("type" in event) ||
+            typeof event.type !== "string"
+          ) {
+            throw new TypeError("Scheduled transition event type is invalid");
+          }
+          return {
+            audience: "participants" as const,
+            event,
+            eventType: event.type,
+            matchVersion: step.state.version,
+          };
+        }),
+      ),
+      occurredAt,
+    );
     await this.matches.appendEvents(client, events.matchEvents);
     await this.outbox.enqueue(client, events.outboxEvents);
     await this.scheduledJobs.synchronizeMatchDeadline(
