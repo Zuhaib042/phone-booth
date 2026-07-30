@@ -5,6 +5,7 @@ import {
   ConfigError,
   loadApiConfig,
   loadDatastoreConfig,
+  loadReliableJobConfig,
   loadWorkerConfig,
 } from "../src/config.js";
 
@@ -87,5 +88,34 @@ test("loadDatastoreConfig requires supported connection URLs", () => {
       }),
     (error: unknown) =>
       error instanceof ConfigError && error.message.startsWith("DATABASE_URL"),
+  );
+});
+
+test("loadReliableJobConfig validates bounded polling settings", () => {
+  assert.deepEqual(loadReliableJobConfig({}), {
+    batchSize: 25,
+    leaseMilliseconds: 30_000,
+    outboxChannel: "project-booth:events",
+    pollIntervalMilliseconds: 250,
+  });
+  assert.deepEqual(
+    loadReliableJobConfig({
+      OUTBOX_CHANNEL: "test-events",
+      WORKER_BATCH_SIZE: "10",
+      WORKER_LEASE_MS: "5000",
+      WORKER_POLL_INTERVAL_MS: "50",
+    }),
+    {
+      batchSize: 10,
+      leaseMilliseconds: 5_000,
+      outboxChannel: "test-events",
+      pollIntervalMilliseconds: 50,
+    },
+  );
+  assert.throws(
+    () => loadReliableJobConfig({ WORKER_LEASE_MS: "999" }),
+    (error: unknown) =>
+      error instanceof ConfigError &&
+      error.message.startsWith("WORKER_LEASE_MS"),
   );
 });

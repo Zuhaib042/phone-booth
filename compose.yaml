@@ -67,6 +67,8 @@ services:
       timeout: 5s
       start_period: 5s
       retries: 10
+    ports:
+      - "127.0.0.1:${PHONE_BOOTH_POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql
     restart: "no"

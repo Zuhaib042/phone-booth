@@ -7,5 +7,10 @@
     "outDir": "dist",
     "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo"
   },
+  "references": [
+    { "path": "../../packages/domain" },
+    { "path": "../../packages/config" },
+    { "path": "../../packages/game-engine" }
+  ],
   "include": ["src/**/*.ts", "test/**/*.ts"]
 }

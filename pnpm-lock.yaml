@@ -77,6 +77,15 @@ importers:
 
   services/backend:
     dependencies:
+      '@project-booth/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@project-booth/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+      '@project-booth/game-engine':
+        specifier: workspace:*
+        version: link:../../packages/game-engine
       fastify:
         specifier: 5.10.0
         version: 5.10.0

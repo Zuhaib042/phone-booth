@@ -3,6 +3,8 @@ import { unlink, writeFile } from "node:fs/promises";
 import type { Logger } from "pino";
 
 import {
+  loadDatastoreConfig,
+  loadReliableJobConfig,
   loadWorkerConfig,
   type Environment,
   type WorkerConfig,
@@ -13,10 +15,12 @@ import {
   type ShutdownSignal,
   type SignalSubscription,
 } from "./process-signals.js";
+import { ReliablePostgresWorkerJob } from "./persistence/reliable-worker.js";
 
 export interface WorkerJob {
   readonly name: string;
   execute(): Promise<void>;
+  stop?(): Promise<void>;
 }
 
 export interface ReadinessReporter {
@@ -104,6 +108,7 @@ export class WorkerRuntime {
       }
 
       try {
+        await this.startupJob.stop?.();
         await this.readiness.markNotReady();
         this.logger.info({ signal }, "Worker shutdown complete");
       } finally {
@@ -120,9 +125,21 @@ export async function startWorker(
 ): Promise<RunningWorker> {
   const config = loadWorkerConfig(environment);
   const logger = createRuntimeLogger(config, "backend-worker");
+  const { DATABASE_URL: databaseUrl, VALKEY_URL: valkeyUrl } = environment;
+  const hasDatastoreEnvironment =
+    databaseUrl !== undefined || valkeyUrl !== undefined;
+  const job =
+    config.nodeEnvironment === "test" && !hasDatastoreEnvironment
+      ? STARTUP_NOOP_JOB
+      : new ReliablePostgresWorkerJob(
+          logger,
+          loadDatastoreConfig(environment),
+          loadReliableJobConfig(environment),
+        );
   const runtime = new WorkerRuntime(
     logger,
     new FileReadinessReporter(config.readinessFile),
+    job,
   );
 
   await runtime.start();

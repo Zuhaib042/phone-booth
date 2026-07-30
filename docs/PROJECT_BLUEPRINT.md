@@ -1,7 +1,7 @@
 # Project Booth — Milestone Blueprint
 
 **Status:** Active execution plan  
-**Version:** 0.5<br>
+**Version:** 0.6<br>
 **Framework decision:** Direct Fastify locked for the MVP  
 **Product source:** [MVP Product Specification](MVP_PRODUCT_SPEC.md)  
 **Architecture source:** [Technical Architecture](TECHNICAL_ARCHITECTURE.md)
@@ -14,9 +14,9 @@ Only one chunk is active at a time. Finishing a milestone does not authorize sta
 
 ### Current execution status
 
-- Completed: M0.1–M0.3, M1.1–M1.7, M2.1–M2.5, and M3.1–M3.8
+- Completed: M0.1–M0.3, M1.1–M1.7, M2.1–M2.5, M3.1–M3.8, and M4.1–M4.7
 - Active: none
-- Next: M4.1 — Migration tooling and initial durable schema
+- Next: M5.1 — Development-only identity provider
 - Last verified: 2026-07-30 with Node.js 24 LTS, pnpm 11, and Swift 6.3
 
 ## 2. Chunk rules
@@ -152,15 +152,15 @@ flowchart LR
 
 ## 9. M4 — PostgreSQL persistence and reliable jobs
 
-| Chunk | Concise change                                                                                     | Verification                                                           |
-| ----- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| M4.1  | Add migration tooling and initial user, match, round, roster, and ruleset tables.                  | Migrations apply to an empty database and schema checks pass.          |
-| M4.2  | Add repository interfaces and PostgreSQL implementations for match snapshots and events.           | Save/load round-trip reconstructs identical engine state.              |
-| M4.3  | Implement the transaction runner with stable row-lock ordering and retryable serialization errors. | Concurrent test demonstrates one committed transition.                 |
-| M4.4  | Add account-scoped idempotency records and original-response replay.                               | Duplicate requests return the first result without a second mutation.  |
-| M4.5  | Add the transactional outbox and worker claim loop.                                                | Crash-after-commit test republishes safely without losing the event.   |
-| M4.6  | Add PostgreSQL-backed scheduled deadlines with `SKIP LOCKED` claiming.                             | Two workers cannot advance the same phase twice.                       |
-| M4.7  | Add restart recovery for active matches.                                                           | API and worker restarts preserve phase, deadline, version, and roster. |
+| Chunk           | Concise change                                                                                     | Verification                                                           |
+| --------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| M4.1 — Complete | Add migration tooling and initial user, match, round, roster, and ruleset tables.                  | Migrations apply to an empty database and schema checks pass.          |
+| M4.2 — Complete | Add repository interfaces and PostgreSQL implementations for match snapshots and events.           | Save/load round-trip reconstructs identical engine state.              |
+| M4.3 — Complete | Implement the transaction runner with stable row-lock ordering and retryable serialization errors. | Concurrent test demonstrates one committed transition.                 |
+| M4.4 — Complete | Add account-scoped idempotency records and original-response replay.                               | Duplicate requests return the first result without a second mutation.  |
+| M4.5 — Complete | Add the transactional outbox and worker claim loop.                                                | Crash-after-commit test republishes safely without losing the event.   |
+| M4.6 — Complete | Add PostgreSQL-backed scheduled deadlines with `SKIP LOCKED` claiming.                             | Two workers cannot advance the same phase twice.                       |
+| M4.7 — Complete | Add restart recovery for active matches.                                                           | API and worker restarts preserve phase, deadline, version, and roster. |
 
 **Exit gate:** PostgreSQL can reconstruct every durable match fact, and worker retries cannot duplicate transitions.
 
@@ -338,16 +338,15 @@ This is post-MVP and begins only after iOS retention validates further investmen
 
 ## 22. Immediate next chunk
 
-The next implementation chunk is **M4.1 — Migration tooling and initial
-durable schema**.
+The next implementation chunk is **M5.1 — Development-only identity
+provider**.
 
 It should create only:
 
-- PostgreSQL migration tooling and documented local commands
-- Initial user, match, round, roster, and immutable ruleset snapshot tables
-- Keys, constraints, indexes, and UTC timestamp conventions required by M4.1
-- Forward migration plus explicit rollback or compensating instructions
-- Empty-database migration and schema verification
+- An identity-provider interface at the authentication boundary
+- A development implementation guarded by an explicit environment setting
+- Startup validation that prevents development authentication in production
+- Focused configuration and provider tests
 
-It must not implement repositories, transaction retries, idempotency, outbox,
-scheduled jobs, or HTTP and WebSocket behavior.
+It must not implement Sign in with Apple, sessions, refresh tokens, profiles,
+or product authentication routes.
