@@ -19,6 +19,8 @@
     "container:status": "docker compose ps --all",
     "container:stop": "docker compose stop --timeout 10",
     "contracts:check": "pnpm --filter @project-booth/contracts run check:compatibility",
+    "db:migrate": "pnpm --filter @project-booth/backend db:migrate",
+    "db:status": "pnpm --filter @project-booth/backend db:status",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "biome lint --error-on-warnings .",

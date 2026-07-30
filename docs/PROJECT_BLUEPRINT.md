@@ -1,7 +1,7 @@
 # Project Booth — Milestone Blueprint
 
 **Status:** Active execution plan  
-**Version:** 0.5<br>
+**Version:** 0.6<br>
 **Framework decision:** Direct Fastify locked for the MVP  
 **Product source:** [MVP Product Specification](MVP_PRODUCT_SPEC.md)  
 **Architecture source:** [Technical Architecture](TECHNICAL_ARCHITECTURE.md)
@@ -14,10 +14,10 @@ Only one chunk is active at a time. Finishing a milestone does not authorize sta
 
 ### Current execution status
 
-- Completed: M0.1–M0.3, M1.1–M1.7, M2.1–M2.5, and M3.1
+- Completed: M0.1–M0.3, M1.1–M1.7, M2.1–M2.5, M3.1–M3.8, and M4.1–M4.7
 - Active: none
-- Next: M3.2 — Lobby readiness and first negotiation
-- Last verified: 2026-07-24 with Node.js 24 LTS, pnpm 11, and Swift 6.3
+- Next: M5.1 — Development-only identity provider
+- Last verified: 2026-07-30 with Node.js 24 LTS, pnpm 11, and Swift 6.3
 
 ## 2. Chunk rules
 
@@ -140,27 +140,27 @@ flowchart LR
 | Chunk           | Concise change                                                                     | Verification                                                                        |
 | --------------- | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
 | M3.1 — Complete | Model roster, player status, match version, phase, and immutable ruleset snapshot. | State construction and invalid-roster tests pass.                                   |
-| M3.2            | Implement lobby readiness and transition into the first negotiation phase.         | Ready, timeout, insufficient-roster, and duplicate-command cases pass.              |
-| M3.3            | Implement negotiation and normal ballot validation without persistence.            | Eligibility, self-vote, revision, deadline, and missing-ballot tests pass.          |
-| M3.4            | Implement tally and single-player elimination.                                     | Majority, plurality, automatic self-vote, and hidden-ballot projections pass.       |
-| M3.5            | Implement runoff phases and cumulative-vote/random tie fallback.                   | Every documented tie path is deterministic under an injected random value.          |
-| M3.6            | Implement eliminated jurors, finalist pleas, jury ballots, and winner fallback.    | Jury majority, missing jurors, ties, and no-juror cases pass.                       |
-| M3.7            | Build the post-match dossier projection.                                           | Fixtures reveal votes and deals only after completion and only to eligible viewers. |
-| M3.8            | Add a headless six-player match simulator.                                         | Seeded simulations complete with exactly one winner and no illegal transition.      |
+| M3.2 — Complete | Implement lobby readiness and transition into the first negotiation phase.         | Ready, timeout, insufficient-roster, and duplicate-command cases pass.              |
+| M3.3 — Complete | Implement negotiation and normal ballot validation without persistence.            | Eligibility, self-vote, revision, deadline, and missing-ballot tests pass.          |
+| M3.4 — Complete | Implement tally and single-player elimination.                                     | Majority, plurality, automatic self-vote, and hidden-ballot projections pass.       |
+| M3.5 — Complete | Implement runoff phases and cumulative-vote/random tie fallback.                   | Every documented tie path is deterministic under an injected random value.          |
+| M3.6 — Complete | Implement eliminated jurors, finalist pleas, jury ballots, and winner fallback.    | Jury majority, missing jurors, ties, and no-juror cases pass.                       |
+| M3.7 — Complete | Build the post-match dossier projection.                                           | Fixtures reveal votes and deals only after completion and only to eligible viewers. |
+| M3.8 — Complete | Add a headless six-player match simulator.                                         | Seeded simulations complete with exactly one winner and no illegal transition.      |
 
 **Exit gate:** Thousands of seeded headless matches complete deterministically without HTTP, databases, sockets, or iOS code.
 
 ## 9. M4 — PostgreSQL persistence and reliable jobs
 
-| Chunk | Concise change                                                                                     | Verification                                                           |
-| ----- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| M4.1  | Add migration tooling and initial user, match, round, roster, and ruleset tables.                  | Migrations apply to an empty database and schema checks pass.          |
-| M4.2  | Add repository interfaces and PostgreSQL implementations for match snapshots and events.           | Save/load round-trip reconstructs identical engine state.              |
-| M4.3  | Implement the transaction runner with stable row-lock ordering and retryable serialization errors. | Concurrent test demonstrates one committed transition.                 |
-| M4.4  | Add account-scoped idempotency records and original-response replay.                               | Duplicate requests return the first result without a second mutation.  |
-| M4.5  | Add the transactional outbox and worker claim loop.                                                | Crash-after-commit test republishes safely without losing the event.   |
-| M4.6  | Add PostgreSQL-backed scheduled deadlines with `SKIP LOCKED` claiming.                             | Two workers cannot advance the same phase twice.                       |
-| M4.7  | Add restart recovery for active matches.                                                           | API and worker restarts preserve phase, deadline, version, and roster. |
+| Chunk           | Concise change                                                                                     | Verification                                                           |
+| --------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| M4.1 — Complete | Add migration tooling and initial user, match, round, roster, and ruleset tables.                  | Migrations apply to an empty database and schema checks pass.          |
+| M4.2 — Complete | Add repository interfaces and PostgreSQL implementations for match snapshots and events.           | Save/load round-trip reconstructs identical engine state.              |
+| M4.3 — Complete | Implement the transaction runner with stable row-lock ordering and retryable serialization errors. | Concurrent test demonstrates one committed transition.                 |
+| M4.4 — Complete | Add account-scoped idempotency records and original-response replay.                               | Duplicate requests return the first result without a second mutation.  |
+| M4.5 — Complete | Add the transactional outbox and worker claim loop.                                                | Crash-after-commit test republishes safely without losing the event.   |
+| M4.6 — Complete | Add PostgreSQL-backed scheduled deadlines with `SKIP LOCKED` claiming.                             | Two workers cannot advance the same phase twice.                       |
+| M4.7 — Complete | Add restart recovery for active matches.                                                           | API and worker restarts preserve phase, deadline, version, and roster. |
 
 **Exit gate:** PostgreSQL can reconstruct every durable match fact, and worker retries cannot duplicate transitions.
 
@@ -338,17 +338,15 @@ This is post-MVP and begins only after iOS retention validates further investmen
 
 ## 22. Immediate next chunk
 
-The next implementation chunk is **M3.2 — Lobby readiness and first
-negotiation**.
+The next implementation chunk is **M5.1 — Development-only identity
+provider**.
 
 It should create only:
 
-- Lobby readiness state for the existing roster
-- Deterministic ready-command behavior, including duplicate commands
-- Transition into the first negotiation phase when readiness permits
-- Lobby timeout and insufficient-roster outcomes
-- Focused tests for ready, timeout, insufficient-roster, and duplicate-command
-  cases
+- An identity-provider interface at the authentication boundary
+- A development implementation guarded by an explicit environment setting
+- Startup validation that prevents development authentication in production
+- Focused configuration and provider tests
 
-It must not accept normal ballots or offers, tally votes, eliminate players,
-award coins, persist state, or add HTTP and WebSocket behavior.
+It must not implement Sign in with Apple, sessions, refresh tokens, profiles,
+or product authentication routes.

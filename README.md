@@ -24,6 +24,10 @@ clients, and the production build. Contract verification requires Swift 6.1 or
 newer in addition to Node and pnpm. Use `pnpm format` and `pnpm lint:fix` to
 apply safe formatting and lint fixes before verification.
 
+PostgreSQL schema commands are available as `pnpm db:migrate` and
+`pnpm db:status`. They require a host-reachable `DATABASE_URL`; the Compose
+development database is published only on loopback.
+
 GitHub Actions runs the same verification command for pushes and pull requests,
 then builds the backend production image. CI does not publish an image or
 contain deployment-provider configuration.

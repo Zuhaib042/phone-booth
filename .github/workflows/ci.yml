@@ -16,6 +16,22 @@ jobs:
     name: Verify workspace
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:18.4-bookworm
+        env:
+          POSTGRES_DB: phone_booth_test
+          POSTGRES_PASSWORD: phone_booth_test
+          POSTGRES_USER: phone_booth
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U phone_booth -d phone_booth_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://phone_booth:phone_booth_test@127.0.0.1:5432/phone_booth_test
 
     steps:
       - name: Check out repository

@@ -26,9 +26,20 @@ export interface WorkerConfig extends RuntimeConfig {
   readonly readinessFile: string;
 }
 
+export interface ReliableJobConfig {
+  readonly batchSize: number;
+  readonly leaseMilliseconds: number;
+  readonly outboxChannel: string;
+  readonly pollIntervalMilliseconds: number;
+}
+
 export interface DatastoreConfig {
   readonly databaseUrl: string;
   readonly valkeyUrl: string;
+}
+
+export interface PostgresConfig {
+  readonly databaseUrl: string;
 }
 
 export type Environment = Readonly<Record<string, string | undefined>>;
@@ -84,6 +95,28 @@ function readPort(environment: Environment): number {
   }
 
   return port;
+}
+
+function readInteger(
+  environment: Environment,
+  key: string,
+  fallback: number,
+  minimum: number,
+  maximum: number,
+): number {
+  const value = readNonEmpty(environment, key, String(fallback));
+  if (!/^\d+$/.test(value)) {
+    throw new ConfigError(
+      `${key} must be an integer from ${minimum} to ${maximum}`,
+    );
+  }
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < minimum || parsed > maximum) {
+    throw new ConfigError(
+      `${key} must be an integer from ${minimum} to ${maximum}`,
+    );
+  }
+  return parsed;
 }
 
 function readConnectionUrl(
@@ -145,13 +178,21 @@ export function loadDatastoreConfig(
   environment: Environment = process.env,
 ): DatastoreConfig {
   return {
-    databaseUrl: readConnectionUrl(environment, "DATABASE_URL", [
-      "postgres:",
-      "postgresql:",
-    ]),
+    ...loadPostgresConfig(environment),
     valkeyUrl: readConnectionUrl(environment, "VALKEY_URL", [
       "redis:",
       "rediss:",
+    ]),
+  };
+}
+
+export function loadPostgresConfig(
+  environment: Environment = process.env,
+): PostgresConfig {
+  return {
+    databaseUrl: readConnectionUrl(environment, "DATABASE_URL", [
+      "postgres:",
+      "postgresql:",
     ]),
   };
 }
@@ -165,6 +206,33 @@ export function loadWorkerConfig(
       environment,
       "WORKER_READY_FILE",
       "/tmp/project-booth-worker-ready",
+    ),
+  };
+}
+
+export function loadReliableJobConfig(
+  environment: Environment = process.env,
+): ReliableJobConfig {
+  return {
+    batchSize: readInteger(environment, "WORKER_BATCH_SIZE", 25, 1, 100),
+    leaseMilliseconds: readInteger(
+      environment,
+      "WORKER_LEASE_MS",
+      30_000,
+      1_000,
+      300_000,
+    ),
+    outboxChannel: readNonEmpty(
+      environment,
+      "OUTBOX_CHANNEL",
+      "project-booth:events",
+    ),
+    pollIntervalMilliseconds: readInteger(
+      environment,
+      "WORKER_POLL_INTERVAL_MS",
+      250,
+      25,
+      60_000,
     ),
   };
 }

@@ -18,6 +18,5 @@
 apps
 docs
 infra
-packages
 tests
 services/backend/test
