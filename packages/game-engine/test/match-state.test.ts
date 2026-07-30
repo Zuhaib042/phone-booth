@@ -15,11 +15,15 @@ import {
 import {
   applyLobbyCommand,
   applyRoundCommand,
+  applyRunoffCommand,
+  applyTallyCommand,
   createMatchState,
   INITIAL_MATCH_VERSION,
   type LobbyTransition,
   type MatchState,
   type RoundTransition,
+  type RunoffTransition,
+  type TallyTransition,
 } from "../src/index.js";
 
 const RULESET_INPUT = {
@@ -151,6 +155,14 @@ test("constructs the documented immutable initial match state", () => {
   assert.deepEqual(result.value.readyPlayerIds, []);
   assert.deepEqual(result.value.normalBallots, []);
   assert.deepEqual(result.value.missingNormalBallotPlayerIds, []);
+  assert.equal(result.value.normalTally, null);
+  assert.deepEqual(
+    result.value.cumulativeEliminationVoteTotals,
+    playerIds.map((playerId) => ({ playerId, votes: 0 })),
+  );
+  assert.deepEqual(result.value.runoffPlayerIds, []);
+  assert.deepEqual(result.value.runoffBallots, []);
+  assert.equal(result.value.tieResolution, null);
   assert.deepEqual(
     result.value.roster.map(({ playerId, status }) => ({ playerId, status })),
     playerIds.map((playerId) => ({ playerId, status: "active" })),
@@ -564,4 +576,399 @@ test("invalid ballot actors, targets, phases, and times are rejected", () => {
       "deadline_not_reached",
     ],
   );
+});
+
+function closedVotingState(
+  ballots: readonly (readonly [voterIndex: number, targetIndex: number])[],
+): MatchState {
+  let state = votingState();
+  for (const [voterIndex, targetIndex] of ballots) {
+    state = submitBallot(state, player(voterIndex), player(targetIndex)).state;
+  }
+  if (state.phase === "voting") {
+    state = success(
+      applyRoundCommand(state, {
+        type: "voting_timed_out",
+        occurredAt: state.phaseDeadline as UtcTimestamp,
+      }),
+    ).state;
+  }
+  assert.equal(state.phase, "tally");
+  return state;
+}
+
+function ballotTargets(...targetIndexes: readonly number[]) {
+  return targetIndexes.map(
+    (targetIndex, voterIndex) => [voterIndex, targetIndex] as const,
+  );
+}
+
+function tally(
+  state: MatchState,
+  occurredAt = timestamp("2026-07-24T12:02:30.000Z"),
+): TallyTransition {
+  return success(
+    applyTallyCommand(state, {
+      type: "normal_ballots_tallied",
+      occurredAt,
+    }),
+  );
+}
+
+test("normal tally eliminates a sole majority or plurality leader", () => {
+  const cases = [
+    [ballotTargets(1, 0, 0, 0, 0, 0), [5, 1, 0, 0, 0, 0]],
+    [ballotTargets(1, 0, 0, 0, 1, 2), [3, 2, 1, 0, 0, 0]],
+  ] as const;
+
+  for (const [ballots, votes] of cases) {
+    const transition = tally(closedVotingState(ballots));
+    const projection = JSON.stringify(transition.events);
+
+    assert.equal(transition.state.phase, "elimination");
+    assert.equal(transition.state.phaseDeadline, "2026-07-24T12:02:40.000Z");
+    assert.equal(transition.state.normalTally?.eliminatedPlayerId, player(0));
+    assert.deepEqual(
+      transition.state.normalTally?.voteTotals.map(({ votes }) => votes),
+      votes,
+    );
+    assert.deepEqual(
+      transition.state.roster.flatMap(({ playerId, status }) =>
+        status === "eliminated" ? [playerId] : [],
+      ),
+      [player(0)],
+    );
+    assert.match(projection, /"voteTotals"/);
+    assert.doesNotMatch(projection, /"voterId"|"targetId"|"ballotTargetId"/);
+    assert.doesNotMatch(projection, /"automaticSelfVotes"/);
+  }
+});
+
+test("missed ballots materialize as deterministic automatic self-votes", () => {
+  const closed = closedVotingState(ballotTargets(4, 4, 4, 5));
+  const transition = tally(closed);
+  const result = transition.state.normalTally;
+  assert.notEqual(result, null);
+  assert.deepEqual(result?.automaticSelfVotes, [
+    { playerId: player(4), reason: "missed_normal_ballot" },
+    { playerId: player(5), reason: "missed_normal_ballot" },
+  ]);
+  assert.deepEqual(
+    result?.voteTotals.map(({ votes }) => votes),
+    [0, 0, 0, 0, 4, 2],
+  );
+  assert.equal(result?.eliminatedPlayerId, player(4));
+  assert.equal(closed.normalBallots.length, 4);
+  assert.equal(
+    closed.normalBallots.every(({ voterId, targetId }) => voterId !== targetId),
+    true,
+  );
+  assert.equal(
+    result?.voteTotals.reduce((sum, { votes }) => sum + votes, 0),
+    playerIds.length,
+  );
+});
+
+test("tied leaders remain unresolved for deterministic runoff handling", () => {
+  const state = closedVotingState(ballotTargets(1, 2, 3, 4, 5, 0));
+  const first = tally(state);
+  const second = tally(state);
+
+  assert.deepEqual(first, second);
+  assert.equal(first.state.phase, "tally");
+  assert.equal(first.state.phaseDeadline, null);
+  assert.deepEqual(first.state.normalTally?.leaderPlayerIds, playerIds);
+  assert.equal(first.state.normalTally?.eliminatedPlayerId, null);
+  assert.equal(
+    first.state.roster.every(({ status }) => status === "active"),
+    true,
+  );
+  assert.deepEqual(first.events, [
+    {
+      type: "normal_tally.completed",
+      outcome: "tie",
+      voteTotals: playerIds.map((playerId) => ({ playerId, votes: 1 })),
+      tiedPlayerIds: playerIds,
+    },
+  ]);
+  assert.equal(Object.isFrozen(first.state.normalTally), true);
+  assert.equal(Object.isFrozen(first.state.normalTally?.voteTotals), true);
+  assert.equal(
+    first.state.normalTally?.voteTotals.every(Object.isFrozen),
+    true,
+  );
+  const duplicate = tally(first.state, timestamp("2026-07-24T12:02:31.000Z"));
+  assert.equal(duplicate.state, first.state);
+  assert.deepEqual(duplicate.events, []);
+});
+
+test("tally rejects wrong phases and inconsistent ballot coverage", () => {
+  const valid = closedVotingState([[0, 1]]);
+  const inconsistent = Object.freeze({
+    ...valid,
+    missingNormalBallotPlayerIds: Object.freeze([
+      player(0),
+      ...valid.missingNormalBallotPlayerIds,
+    ]),
+  });
+  const cases = [
+    applyTallyCommand(votingState(), {
+      type: "normal_ballots_tallied",
+      occurredAt: timestamp("2026-07-24T12:02:30.000Z"),
+    }),
+    applyTallyCommand(inconsistent, {
+      type: "normal_ballots_tallied",
+      occurredAt: timestamp("2026-07-24T12:02:30.000Z"),
+    }),
+  ];
+
+  assert.deepEqual(
+    cases.map((result) => (result.ok ? null : result.error.details.reason)),
+    ["wrong_phase", "invalid_tally_state"],
+  );
+});
+
+function tiedTallyState(
+  targets = ballotTargets(1, 0, 0, 0, 1, 1),
+  priorVotes: readonly number[] = [0, 0, 0, 0, 0, 0],
+): MatchState {
+  const closed = closedVotingState(targets);
+  const withHistory = Object.freeze({
+    ...closed,
+    cumulativeEliminationVoteTotals: Object.freeze(
+      playerIds.map((playerId, index) =>
+        Object.freeze({ playerId, votes: priorVotes[index] ?? 0 }),
+      ),
+    ),
+  });
+  return tally(withHistory).state;
+}
+
+function runoffVotingState(priorVotes?: readonly number[]): MatchState {
+  const started = success(
+    applyRunoffCommand(tiedTallyState(undefined, priorVotes), {
+      type: "runoff_started",
+      occurredAt: timestamp("2026-07-24T12:02:31.000Z"),
+    }),
+  );
+  return success(
+    applyRunoffCommand(started.state, {
+      type: "runoff_negotiation_timed_out",
+      occurredAt: started.state.phaseDeadline as UtcTimestamp,
+    }),
+  ).state;
+}
+
+function submitRunoff(
+  state: MatchState,
+  voterIndex: number,
+  targetIndex: number,
+): RunoffTransition {
+  return success(
+    applyRunoffCommand(state, {
+      type: "runoff_ballot_submitted",
+      voterId: player(voterIndex),
+      targetId: player(targetIndex),
+      occurredAt: timestamp("2026-07-24T12:03:05.000Z"),
+    }),
+  );
+}
+
+function runoffWithTargets(
+  targets: readonly number[],
+  priorVotes?: readonly number[],
+): MatchState {
+  let state = runoffVotingState(priorVotes);
+  targets.forEach((target, index) => {
+    state = submitRunoff(state, index + 2, target).state;
+  });
+  return state;
+}
+
+test("a partial tie enters runoff phases with restricted revisable ballots", () => {
+  const tied = tiedTallyState();
+  const started = success(
+    applyRunoffCommand(tied, {
+      type: "runoff_started",
+      occurredAt: timestamp("2026-07-24T12:02:31.000Z"),
+    }),
+  );
+  assert.equal(started.state.phase, "runoff_negotiation");
+  assert.equal(started.state.phaseDeadline, "2026-07-24T12:03:01.000Z");
+  assert.deepEqual(started.state.runoffPlayerIds, [player(0), player(1)]);
+
+  const voting = runoffVotingState();
+  assert.equal(voting.phase, "runoff_voting");
+  assert.equal(voting.phaseDeadline, "2026-07-24T12:03:16.000Z");
+  const first = submitRunoff(voting, 2, 0);
+  const duplicate = submitRunoff(first.state, 2, 0);
+  const revision = submitRunoff(duplicate.state, 2, 1);
+  assert.equal(duplicate.state, first.state);
+  assert.deepEqual(revision.events, [
+    {
+      type: "runoff_ballot.acknowledged",
+      recipientUserId: player(2),
+      ballotTargetId: player(1),
+      revision: 2,
+    },
+  ]);
+
+  const invalidCases = [
+    applyRunoffCommand(started.state, {
+      type: "runoff_negotiation_timed_out",
+      occurredAt: timestamp("2026-07-24T12:03:00.999Z"),
+    }),
+    applyRunoffCommand(voting, {
+      type: "runoff_ballot_submitted",
+      voterId: player(0),
+      targetId: player(1),
+      occurredAt: timestamp("2026-07-24T12:03:05.000Z"),
+    }),
+    applyRunoffCommand(voting, {
+      type: "runoff_ballot_submitted",
+      voterId: player(2),
+      targetId: player(3),
+      occurredAt: timestamp("2026-07-24T12:03:05.000Z"),
+    }),
+    applyRunoffCommand(first.state, {
+      type: "runoff_tallied",
+      occurredAt: timestamp("2026-07-24T12:03:06.000Z"),
+    }),
+    applyRunoffCommand(voting, {
+      type: "runoff_ballot_submitted",
+      voterId: player(2),
+      targetId: player(0),
+      occurredAt: voting.phaseDeadline as UtcTimestamp,
+    }),
+  ];
+  assert.deepEqual(
+    invalidCases.map((result) =>
+      result.ok ? null : result.error.details.reason,
+    ),
+    [
+      "deadline_not_reached",
+      "voter_not_eligible",
+      "target_not_eligible",
+      "voting_incomplete",
+      "deadline_passed",
+    ],
+  );
+});
+
+test("a clear runoff result eliminates only its sole vote leader", () => {
+  const state = runoffWithTargets([0, 0, 0, 1]);
+  const first = success(
+    applyRunoffCommand(state, {
+      type: "runoff_tallied",
+      occurredAt: timestamp("2026-07-24T12:03:06.000Z"),
+    }),
+  );
+  const second = success(
+    applyRunoffCommand(state, {
+      type: "runoff_tallied",
+      occurredAt: timestamp("2026-07-24T12:03:06.000Z"),
+      randomSample: 0.99,
+    }),
+  );
+
+  assert.deepEqual(first, second);
+  assert.equal(first.state.phase, "elimination");
+  assert.equal(first.state.tieResolution?.method, "runoff_vote");
+  assert.deepEqual(
+    first.state.tieResolution?.runoffVoteTotals.map(({ votes }) => votes),
+    [3, 1],
+  );
+  assert.equal(first.state.tieResolution?.eliminatedPlayerId, player(0));
+  assert.deepEqual(
+    first.state.roster.flatMap(({ playerId, status }) =>
+      status === "eliminated" ? [playerId] : [],
+    ),
+    [player(0)],
+  );
+  const aggregate = JSON.stringify(first.events[0]);
+  assert.doesNotMatch(aggregate, /"voterId"|"targetId"|"ballotTargetId"/);
+  assert.equal(Object.isFrozen(first.state.tieResolution), true);
+});
+
+test("a tied runoff falls back to cumulative votes before randomness", () => {
+  const state = runoffWithTargets([0, 0, 1, 1], [2, 0, 0, 0, 0, 0]);
+  const result = success(
+    applyRunoffCommand(state, {
+      type: "runoff_tallied",
+      occurredAt: timestamp("2026-07-24T12:03:06.000Z"),
+      randomSample: 0.99,
+    }),
+  );
+
+  assert.equal(result.state.tieResolution?.method, "cumulative_votes");
+  assert.equal(result.state.tieResolution?.randomSample, null);
+  assert.deepEqual(
+    result.state.cumulativeEliminationVoteTotals
+      .slice(0, 2)
+      .map(({ votes }) => votes),
+    [7, 5],
+  );
+  assert.equal(result.state.tieResolution?.eliminatedPlayerId, player(0));
+});
+
+test("a cumulative tie requires and audits a deterministic random sample", () => {
+  const state = runoffWithTargets([0, 0, 1, 1]);
+  const missing = applyRunoffCommand(state, {
+    type: "runoff_tallied",
+    occurredAt: timestamp("2026-07-24T12:03:06.000Z"),
+  });
+  const invalid = applyRunoffCommand(state, {
+    type: "runoff_tallied",
+    occurredAt: timestamp("2026-07-24T12:03:06.000Z"),
+    randomSample: 1,
+  });
+  const command = {
+    type: "runoff_tallied",
+    occurredAt: timestamp("2026-07-24T12:03:06.000Z"),
+    randomSample: 0.75,
+  } as const;
+  const first = success(applyRunoffCommand(state, command));
+  const second = success(applyRunoffCommand(state, command));
+
+  assert.deepEqual(first, second);
+  assert.equal(first.state.tieResolution?.method, "random_draw");
+  assert.equal(first.state.tieResolution?.randomSample, 0.75);
+  assert.deepEqual(first.state.tieResolution?.resolutionCandidatePlayerIds, [
+    player(0),
+    player(1),
+  ]);
+  assert.equal(first.state.tieResolution?.eliminatedPlayerId, player(1));
+  assert.deepEqual(
+    [missing, invalid].map((result) =>
+      result.ok ? null : result.error.details.reason,
+    ),
+    ["random_sample_required", "invalid_random_sample"],
+  );
+});
+
+test("an all-player tie skips runoff and uses the same fallback order", () => {
+  const allTied = tiedTallyState(ballotTargets(1, 2, 3, 4, 5, 0));
+  const random = success(
+    applyRunoffCommand(allTied, {
+      type: "runoff_started",
+      occurredAt: timestamp("2026-07-24T12:02:31.000Z"),
+      randomSample: 0.5,
+    }),
+  );
+  const cumulative = success(
+    applyRunoffCommand(
+      tiedTallyState(ballotTargets(1, 2, 3, 4, 5, 0), [0, 0, 0, 0, 2, 0]),
+      {
+        type: "runoff_started",
+        occurredAt: timestamp("2026-07-24T12:02:31.000Z"),
+      },
+    ),
+  );
+
+  assert.equal(random.state.phase, "elimination");
+  assert.equal(random.state.tieResolution?.method, "random_draw");
+  assert.equal(random.state.tieResolution?.eliminatedPlayerId, player(3));
+  assert.deepEqual(random.state.tieResolution?.runoffVoteTotals, []);
+  assert.equal(cumulative.state.tieResolution?.method, "cumulative_votes");
+  assert.equal(cumulative.state.tieResolution?.eliminatedPlayerId, player(4));
 });

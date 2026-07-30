@@ -126,6 +126,10 @@ export function applyRoundCommand(
           phaseDeadline: deadline.value,
           normalBallots: Object.freeze([]),
           missingNormalBallotPlayerIds: Object.freeze([]),
+          normalTally: null,
+          runoffPlayerIds: Object.freeze([]),
+          runoffBallots: Object.freeze([]),
+          tieResolution: null,
         },
         [
           {

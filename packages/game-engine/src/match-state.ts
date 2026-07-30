@@ -45,6 +45,41 @@ export interface NormalBallot {
   readonly submittedAt: UtcTimestamp;
 }
 
+export interface AutomaticSelfVote {
+  readonly playerId: UserId;
+  readonly reason: "missed_normal_ballot";
+}
+
+export interface EliminationVoteTotal {
+  readonly playerId: UserId;
+  readonly votes: number;
+}
+
+export interface NormalTallyResult {
+  readonly automaticSelfVotes: readonly AutomaticSelfVote[];
+  readonly voteTotals: readonly EliminationVoteTotal[];
+  readonly leaderPlayerIds: readonly UserId[];
+  readonly eliminatedPlayerId: UserId | null;
+}
+
+export interface RunoffBallot {
+  readonly voterId: UserId;
+  readonly targetId: UserId;
+  readonly revision: number;
+  readonly submittedAt: UtcTimestamp;
+}
+
+export type TieResolutionMethod =
+  "runoff_vote" | "cumulative_votes" | "random_draw";
+
+export interface TieResolution {
+  readonly runoffVoteTotals: readonly EliminationVoteTotal[];
+  readonly resolutionCandidatePlayerIds: readonly UserId[];
+  readonly eliminatedPlayerId: UserId;
+  readonly method: TieResolutionMethod;
+  readonly randomSample: number | null;
+}
+
 export interface MatchState {
   readonly matchId: MatchId;
   readonly version: MatchVersion;
@@ -55,6 +90,11 @@ export interface MatchState {
   readonly readyPlayerIds: readonly UserId[];
   readonly normalBallots: readonly NormalBallot[];
   readonly missingNormalBallotPlayerIds: readonly UserId[];
+  readonly normalTally: NormalTallyResult | null;
+  readonly cumulativeEliminationVoteTotals: readonly EliminationVoteTotal[];
+  readonly runoffPlayerIds: readonly UserId[];
+  readonly runoffBallots: readonly RunoffBallot[];
+  readonly tieResolution: TieResolution | null;
 }
 
 export interface CreateMatchStateInput {
@@ -144,6 +184,13 @@ export function createMatchState(
       readyPlayerIds: Object.freeze([]),
       normalBallots: Object.freeze([]),
       missingNormalBallotPlayerIds: Object.freeze([]),
+      normalTally: null,
+      cumulativeEliminationVoteTotals: Object.freeze(
+        roster.map(({ playerId }) => Object.freeze({ playerId, votes: 0 })),
+      ),
+      runoffPlayerIds: Object.freeze([]),
+      runoffBallots: Object.freeze([]),
+      tieResolution: null,
     }),
   );
 }
