@@ -6,6 +6,8 @@ import Fastify, {
 import { registerChatRoutes } from "./chat/routes.js";
 import type { ChatApplication } from "./chat/service.js";
 import type { ApiConfig } from "./config.js";
+import { registerEconomyRoutes } from "./economy/routes.js";
+import type { PostgresEconomyService } from "./economy/service.js";
 import { registerIdentityRoutes } from "./identity/routes.js";
 import type { IdentityApplication } from "./identity/service.js";
 import { createLoggerOptions } from "./logger.js";
@@ -19,6 +21,7 @@ import type { RealtimeGateway } from "./realtime/websocket.js";
 
 export interface BuildApiOptions {
   readonly chatService?: ChatApplication;
+  readonly economyService?: PostgresEconomyService;
   readonly identityService?: IdentityApplication;
   readonly logger?: FastifyServerOptions["logger"];
   readonly matchmakingService?: MatchmakingApplication;
@@ -78,6 +81,7 @@ export function buildApi(
   );
 
   registerIdentityRoutes(api, options.identityService);
+  registerEconomyRoutes(api, options.identityService, options.economyService);
   registerChatRoutes(api, options.identityService, options.chatService);
   registerMatchmakingRoutes(
     api,

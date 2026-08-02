@@ -14,9 +14,9 @@ Only one chunk is active at a time. Finishing a milestone does not authorize sta
 
 ### Current execution status
 
-- Completed: M0.1–M0.3, M1.1–M1.7, M2.1–M2.5, M3.1–M3.8, M4.1–M4.7, M5.1–M5.6, M6.1–M6.7, and M7.1–M7.6
+- Completed: M0.1–M0.3, M1.1–M1.7, M2.1–M2.5, M3.1–M3.8, M4.1–M4.7, M5.1–M5.6, M6.1–M6.7, M7.1–M7.6, and M8.1–M8.9
 - Active: none
-- Next: M8.1 — Immutable coin ledger
+- Next: M9.1 — Native iOS project foundation
 - Last verified: 2026-07-30 with Node.js 24 LTS, pnpm 11, and Swift 6.3
 
 ## 2. Chunk rules
@@ -208,17 +208,17 @@ flowchart LR
 
 Launch quantities remain test fixtures until M11.
 
-| Chunk | Concise change                                                                         | Verification                                                                       |
-| ----- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| M8.1  | Add coin accounts, immutable ledger transactions, and balanced ledger entries.         | Property tests prove every transaction sums to zero.                               |
-| M8.2  | Add spendable, reserved, and pending balance buckets.                                  | Invalid negative transitions fail atomically.                                      |
-| M8.3  | Add configurable grants and cosmetic sinks using non-launch fixture values.            | Duplicate grants and purchases cannot mint or burn twice.                          |
-| M8.4  | Add formal bribe creation, replacement, decline, and expiry.                           | Invalid sender, recipient, target, phase, amount, and expiry cases fail.           |
-| M8.5  | Add atomic bribe acceptance with pending recipient funds and match outflow accounting. | Simultaneous accept attempts transfer value once.                                  |
-| M8.6  | Settle pending funds after any valid ballot without enforcing the promised target.     | Honored and betrayed ballots settle identically.                                   |
-| M8.7  | Reverse pending funds and restore sender allowance after a missed ballot.              | AFK and deadline races preserve balances and cap invariants.                       |
-| M8.8  | Add conflicting offers and dossier classifications.                                    | One recipient can accept conflicting promises; final ballots label each correctly. |
-| M8.9  | Add ledger, offer, refund-race, and concurrency property tests.                        | Long randomized command sequences preserve all economy invariants.                 |
+| Chunk           | Concise change                                                                         | Verification                                                                       |
+| --------------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| M8.1 — Complete | Add coin accounts, immutable ledger transactions, and balanced ledger entries.         | Property tests prove every transaction sums to zero.                               |
+| M8.2 — Complete | Add spendable, reserved, and pending balance buckets.                                  | Invalid negative transitions fail atomically.                                      |
+| M8.3 — Complete | Add configurable grants and cosmetic sinks using non-launch fixture values.            | Duplicate grants and purchases cannot mint or burn twice.                          |
+| M8.4 — Complete | Add formal bribe creation, replacement, decline, and expiry.                           | Invalid sender, recipient, target, phase, amount, and expiry cases fail.           |
+| M8.5 — Complete | Add atomic bribe acceptance with pending recipient funds and match outflow accounting. | Simultaneous accept attempts transfer value once.                                  |
+| M8.6 — Complete | Settle pending funds after any valid ballot without enforcing the promised target.     | Honored and betrayed ballots settle identically.                                   |
+| M8.7 — Complete | Reverse pending funds and restore sender allowance after a missed ballot.              | AFK and deadline races preserve balances and cap invariants.                       |
+| M8.8 — Complete | Add conflicting offers and dossier classifications.                                    | One recipient can accept conflicting promises; final ballots label each correctly. |
+| M8.9 — Complete | Add ledger, offer, refund-race, and concurrency property tests.                        | Long randomized command sequences preserve all economy invariants.                 |
 
 **Exit gate:** The server proves that betrayal is permitted, abandonment cannot launder coins, and no concurrency path duplicates value.
 
@@ -338,13 +338,7 @@ This is post-MVP and begins only after iOS retention validates further investmen
 
 ## 22. Immediate next chunk
 
-The next implementation chunk is **M8.1 — Immutable coin ledger**.
+The next implementation chunk is **M9.1 — Native iOS project foundation**.
 
-It should create only:
-
-- Coin accounts and immutable ledger transactions
-- Balanced debit and credit entries
-- Focused property tests proving every transaction sums to zero
-
-It must not implement balance buckets, launch grant values, cosmetic sinks,
-formal offers, settlement, or reversal behavior.
+M8 is complete. Its economy values remain explicitly non-production fixtures;
+M11 will replace them with approved remote economy configuration.

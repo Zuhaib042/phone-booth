@@ -1,5 +1,6 @@
 import type { MatchId, UserId, UtcTimestamp } from "@project-booth/domain";
 import type { MatchState } from "@project-booth/game-engine";
+import type { PoolClient } from "pg";
 
 import { PostgresRealtimeEventRepository } from "../realtime/events.js";
 import {
@@ -30,6 +31,11 @@ export interface ExecuteMatchCommandInput {
   apply(
     state: MatchState,
   ): Promise<MatchCommandTransition> | MatchCommandTransition;
+  afterApply?(
+    client: PoolClient,
+    previousState: MatchState,
+    transition: MatchCommandTransition,
+  ): Promise<void>;
 }
 
 export class MatchNotFoundError extends Error {
@@ -50,6 +56,18 @@ function eventType(event: unknown): string {
     throw new TypeError("Match event must have a non-empty type");
   }
   return event.type;
+}
+
+function privateRecipient(event: unknown): UserId | undefined {
+  if (
+    event !== null &&
+    typeof event === "object" &&
+    "recipientUserId" in event &&
+    typeof event.recipientUserId === "string"
+  ) {
+    return event.recipientUserId as UserId;
+  }
+  return undefined;
 }
 
 export class PostgresMatchCommandExecutor {
@@ -115,6 +133,8 @@ export class PostgresMatchCommandExecutor {
         throw new Error("An unversioned transition cannot emit events");
       }
 
+      await input.afterApply?.(client, current, transition);
+
       if (transition.state.version > current.version) {
         await this.matches.save(
           client,
@@ -125,12 +145,19 @@ export class PostgresMatchCommandExecutor {
         const records = await this.realtimeEvents.appendProjectedEvents(
           client,
           transition.state,
-          transition.events.map((event) => ({
-            audience: "participants" as const,
-            event,
-            eventType: eventType(event),
-            matchVersion: transition.state.version,
-          })),
+          transition.events.map((event) => {
+            const recipientUserId = privateRecipient(event);
+            return {
+              audience:
+                recipientUserId === undefined
+                  ? ("participants" as const)
+                  : ("player" as const),
+              event,
+              eventType: eventType(event),
+              matchVersion: transition.state.version,
+              ...(recipientUserId === undefined ? {} : { recipientUserId }),
+            };
+          }),
           input.occurredAt,
         );
         await this.matches.appendEvents(client, records.matchEvents);

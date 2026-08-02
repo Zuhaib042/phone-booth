@@ -6,6 +6,7 @@ import {
   loadApiConfig,
   loadChatConfig,
   loadDatastoreConfig,
+  loadEconomyRuntimeConfig,
   loadIdentityConfig,
   loadMatchmakingConfig,
   loadRealtimeConfig,
@@ -47,6 +48,26 @@ test("M7 chat safety settings fail closed in production", () => {
       error instanceof ConfigError &&
       error.message ===
         "CHAT_MODERATION_PROVIDER=deterministic is forbidden when NODE_ENV=production",
+  );
+});
+
+test("M8 fixture economy values cannot be enabled in production", () => {
+  assert.deepEqual(loadEconomyRuntimeConfig({}), {
+    fixtureValuesEnabled: true,
+  });
+  assert.deepEqual(loadEconomyRuntimeConfig({ NODE_ENV: "production" }), {
+    fixtureValuesEnabled: false,
+  });
+  assert.throws(
+    () =>
+      loadEconomyRuntimeConfig({
+        ECONOMY_FIXTURE_VALUES: "enabled",
+        NODE_ENV: "production",
+      }),
+    (error: unknown) =>
+      error instanceof ConfigError &&
+      error.message ===
+        "ECONOMY_FIXTURE_VALUES=enabled is forbidden when NODE_ENV=production",
   );
 });
 

@@ -12,6 +12,7 @@ import {
   loadApiConfig,
   loadChatConfig,
   loadDatastoreConfig,
+  loadEconomyRuntimeConfig,
   loadIdentityConfig,
   loadMatchmakingConfig,
   loadRealtimeConfig,
@@ -19,6 +20,10 @@ import {
   type ApiConfig,
   type Environment,
 } from "./config.js";
+import {
+  M8_FIXTURE_ECONOMY_CONFIG,
+  PostgresEconomyService,
+} from "./economy/service.js";
 import { createIdentityProvider } from "./identity/provider.js";
 import { PostgresIdentityService } from "./identity/service.js";
 import { PostgresMatchApplication } from "./matches/service.js";
@@ -123,6 +128,7 @@ export async function startApi(
   let realtimeQueryService: PostgresRealtimeQueryService | undefined;
   let matchService: PostgresMatchApplication | undefined;
   let chatService: PostgresChatService | undefined;
+  let economyService: PostgresEconomyService | undefined;
 
   if (identityConfig.provider !== "disabled") {
     const datastores = loadDatastoreConfig(environment);
@@ -149,6 +155,7 @@ export async function startApi(
       ]);
       const transactions = new PostgresTransactionRunner(pool);
       const chatConfig = loadChatConfig(environment);
+      const economyRuntime = loadEconomyRuntimeConfig(environment);
       identityService = new PostgresIdentityService(
         transactions,
         createIdentityProvider(identityConfig),
@@ -162,8 +169,13 @@ export async function startApi(
       realtimeQueryService = new PostgresRealtimeQueryService((action) =>
         transactions.run(action),
       );
+      economyService = economyRuntime.fixtureValuesEnabled
+        ? new PostgresEconomyService(transactions, M8_FIXTURE_ECONOMY_CONFIG)
+        : undefined;
       matchService = new PostgresMatchApplication(
         new PostgresMatchCommandExecutor(transactions),
+        undefined,
+        economyService,
       );
       chatService = new PostgresChatService(
         transactions,
@@ -200,6 +212,7 @@ export async function startApi(
       : {
           identityService,
           chatService: chatService as PostgresChatService,
+          ...(economyService === undefined ? {} : { economyService }),
           matchmakingService: matchmakingService as PostgresMatchmakingService,
           matchService: matchService as PostgresMatchApplication,
           realtimeGateway: realtimeGateway as RealtimeGateway,

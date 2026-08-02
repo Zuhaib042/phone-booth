@@ -88,4 +88,67 @@ export function registerMatchRoutes(
         );
       }),
   );
+
+  api.post<{
+    Body: { readonly targetUserId: string };
+    Headers: { readonly "idempotency-key": string };
+    Params: { readonly matchId: string };
+  }>(
+    "/v1/matches/:matchId/ballot",
+    {
+      schema: {
+        headers: {
+          type: "object",
+          required: ["idempotency-key"],
+          properties: {
+            "idempotency-key": { type: "string", format: "uuid" },
+          },
+        },
+        params: {
+          type: "object",
+          additionalProperties: false,
+          required: ["matchId"],
+          properties: { matchId: { type: "string", format: "uuid" } },
+        },
+        body: {
+          type: "object",
+          additionalProperties: false,
+          required: ["targetUserId"],
+          properties: {
+            targetUserId: { type: "string", format: "uuid" },
+          },
+        },
+        response: {
+          200: {
+            type: "object",
+            additionalProperties: false,
+            required: ["matchId", "matchVersion", "revision", "submitted"],
+            properties: {
+              matchId: { type: "string", format: "uuid" },
+              matchVersion: { type: "integer", minimum: 1 },
+              revision: { type: "integer", minimum: 1 },
+              submitted: { type: "boolean", const: true },
+            },
+          },
+        },
+      },
+    },
+    (request, reply) =>
+      handle(request, reply, async () => {
+        const session = await authenticatedSession(request, identityService);
+        if (service === undefined) {
+          throw new IdentityError(
+            "identity_unavailable",
+            "Match services are not configured",
+            503,
+          );
+        }
+        return service.submitNormalBallot(
+          session.userId,
+          request.params.matchId,
+          request.body.targetUserId,
+          request.headers["idempotency-key"],
+        );
+      }),
+  );
 }

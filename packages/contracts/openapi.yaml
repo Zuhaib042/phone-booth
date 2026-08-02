@@ -12,7 +12,7 @@ info:
     Identity endpoints exchange provider credentials for Project Booth
     sessions. Game endpoints trust only the resulting internal account and
     never a platform-provider identifier.
-  version: 0.4.0
+  version: 0.5.0
 
 x-project-booth-api-conventions:
   contractVersion: 1
@@ -53,6 +53,8 @@ tags:
     description: Match-private text threads and safe message delivery.
   - name: Safety
     description: Match mute, report, and future-pairing block commands.
+  - name: Economy
+    description: Private wallet balances, match allowances, and formal bribes.
 
 security:
   - bearerAuth: []
@@ -425,6 +427,203 @@ paths:
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
 
+  /v1/economy/wallet:
+    get:
+      tags:
+        - Economy
+      summary: Get the account's private coin buckets and optional match allowance
+      operationId: getCoinWallet
+      parameters:
+        - name: matchId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Server-authoritative wallet projection.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoinWallet"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /v1/matches/{matchId}/ballot:
+    parameters:
+      - $ref: "#/components/parameters/MatchId"
+    post:
+      tags:
+        - Matches
+      summary: Submit or revise a normal elimination ballot
+      description: |
+        The first valid ballot atomically settles every current-round incoming
+        bribe, regardless of whether its requested target is selected.
+      operationId: submitNormalBallot
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - targetUserId
+              properties:
+                targetUserId:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          description: Private ballot acknowledgement.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NormalBallotAcknowledgement"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /v1/matches/{matchId}/bribes:
+    parameters:
+      - $ref: "#/components/parameters/MatchId"
+    get:
+      tags:
+        - Economy
+      summary: List only the match offers visible to the current account
+      operationId: listVisibleBribeOffers
+      responses:
+        "200":
+          description: Sender-or-recipient scoped offers.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - offers
+                properties:
+                  offers:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/BribeOffer"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+    post:
+      tags:
+        - Economy
+      summary: Create or replace the sender's pending offer to one recipient
+      operationId: createBribeOffer
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBribeOfferRequest"
+      responses:
+        "200":
+          description: A prior pending pair offer was replaced.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BribeOffer"
+        "201":
+          description: A new pending offer was created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BribeOffer"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /v1/bribes/{offerId}/accept:
+    parameters:
+      - $ref: "#/components/parameters/OfferId"
+    post:
+      tags:
+        - Economy
+      summary: Atomically accept an unexpired offer
+      operationId: acceptBribeOffer
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Accepted offer and its private state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BribeOffer"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /v1/bribes/{offerId}/decline:
+    parameters:
+      - $ref: "#/components/parameters/OfferId"
+    post:
+      tags:
+        - Economy
+      summary: Decline a pending offer
+      operationId: declineBribeOffer
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Declined offer and its private state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BribeOffer"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
   /v1/chat/quick-phrases:
     get:
       tags:
@@ -772,6 +971,13 @@ components:
         format: uuid
     MessageId:
       name: messageId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    OfferId:
+      name: offerId
       in: path
       required: true
       schema:
@@ -1129,6 +1335,144 @@ components:
           format: date-time
         ready:
           type: boolean
+
+    NormalBallotAcknowledgement:
+      type: object
+      additionalProperties: false
+      required:
+        - matchId
+        - matchVersion
+        - revision
+        - submitted
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchVersion:
+          type: integer
+          minimum: 1
+        revision:
+          type: integer
+          minimum: 1
+        submitted:
+          type: boolean
+          const: true
+
+    CoinWallet:
+      type: object
+      additionalProperties: false
+      required:
+        - pending
+        - reserved
+        - restricted
+        - spendable
+      properties:
+        matchAllowance:
+          type: object
+          additionalProperties: false
+          required:
+            - acceptedOutflow
+            - cap
+            - remaining
+          properties:
+            acceptedOutflow:
+              type: integer
+              minimum: 0
+            cap:
+              type: integer
+              minimum: 1
+            remaining:
+              type: integer
+              minimum: 0
+        pending:
+          type: integer
+          minimum: 0
+        reserved:
+          type: integer
+          minimum: 0
+        restricted:
+          type: boolean
+        spendable:
+          type: integer
+          minimum: 0
+
+    CreateBribeOfferRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - amount
+        - recipientUserId
+        - requestedTargetUserId
+      properties:
+        amount:
+          type: integer
+          minimum: 1
+        message:
+          type: string
+          minLength: 1
+          maxLength: 2048
+        recipientUserId:
+          type: string
+          format: uuid
+        requestedTargetUserId:
+          type: string
+          format: uuid
+
+    BribeOffer:
+      type: object
+      additionalProperties: false
+      required:
+        - amount
+        - createdAt
+        - expiresAt
+        - matchId
+        - offerId
+        - recipientUserId
+        - requestedTargetUserId
+        - roundNumber
+        - senderUserId
+        - state
+      properties:
+        amount:
+          type: integer
+          minimum: 1
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        filteredMessage:
+          type: string
+          minLength: 1
+          maxLength: 240
+        matchId:
+          type: string
+          format: uuid
+        offerId:
+          type: string
+          format: uuid
+        recipientUserId:
+          type: string
+          format: uuid
+        requestedTargetUserId:
+          type: string
+          format: uuid
+        roundNumber:
+          type: integer
+          minimum: 1
+        senderUserId:
+          type: string
+          format: uuid
+        state:
+          type: string
+          enum:
+            - pending
+            - declined
+            - expired
+            - accepted
+            - reversed
+            - settled
 
     MatchSnapshotRosterEntry:
       type: object

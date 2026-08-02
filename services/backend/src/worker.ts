@@ -4,12 +4,14 @@ import type { Logger } from "pino";
 
 import {
   loadDatastoreConfig,
+  loadEconomyRuntimeConfig,
   loadReliableJobConfig,
   loadWorkerConfig,
   type Environment,
   type WorkerConfig,
 } from "./config.js";
 import { createRuntimeLogger } from "./logger.js";
+import { M8_FIXTURE_ECONOMY_CONFIG } from "./economy/service.js";
 import {
   subscribeToShutdownSignals,
   type ShutdownSignal,
@@ -135,6 +137,10 @@ export async function startWorker(
           logger,
           loadDatastoreConfig(environment),
           loadReliableJobConfig(environment),
+          undefined,
+          loadEconomyRuntimeConfig(environment).fixtureValuesEnabled
+            ? M8_FIXTURE_ECONOMY_CONFIG
+            : undefined,
         );
   const runtime = new WorkerRuntime(
     logger,

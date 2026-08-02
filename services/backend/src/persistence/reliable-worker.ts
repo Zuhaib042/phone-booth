@@ -6,6 +6,10 @@ import type { Logger } from "pino";
 
 import type { DatastoreConfig, ReliableJobConfig } from "../config.js";
 import {
+  PostgresEconomyService,
+  type EconomyConfig,
+} from "../economy/service.js";
+import {
   ACCOUNT_DELETION_JOB_KIND,
   AccountDeletionHandler,
 } from "../identity/service.js";
@@ -144,6 +148,7 @@ export class ReliablePostgresWorkerJob implements WorkerJob {
     datastores: DatastoreConfig,
     private readonly config: ReliableJobConfig,
     private readonly workerId = randomUUID(),
+    private readonly economyConfig?: EconomyConfig,
   ) {
     this.pool = createDatabasePool({
       applicationName: "project-booth-worker",
@@ -162,10 +167,16 @@ export class ReliablePostgresWorkerJob implements WorkerJob {
       const transactions = new PostgresTransactionRunner(this.pool);
       const outboxRepository = new PostgresOutboxRepository();
       const scheduledRepository = new PostgresScheduledJobRepository();
+      const economy =
+        this.economyConfig === undefined
+          ? undefined
+          : new PostgresEconomyService(transactions, this.economyConfig);
       const deadlineHandler = new MatchDeadlineHandler(
         undefined,
         outboxRepository,
         scheduledRepository,
+        undefined,
+        economy,
       );
       const accountDeletionHandler = new AccountDeletionHandler();
       const matchmakingTimeoutHandler = new MatchmakingReadyTimeoutHandler();

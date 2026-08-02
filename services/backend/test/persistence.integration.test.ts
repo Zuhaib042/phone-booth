@@ -172,6 +172,7 @@ test(
         "0003_m5_identity_accounts_profiles.sql",
         "0004_m6_matchmaking_realtime.sql",
         "0005_m7_chat_safety.sql",
+        "0006_m8_coin_ledger_bribes.sql",
       ]);
       assert.deepEqual(firstMigration.pending, []);
       assert.deepEqual(secondMigration.pending, []);
@@ -189,9 +190,17 @@ test(
         [
           "account_deletion_requests",
           "blocks",
+          "bribe_offers",
           "chat_threads",
+          "coin_accounts",
+          "coin_grants",
+          "cosmetic_purchases",
           "devices",
           "idempotency_keys",
+          "inventory_items",
+          "ledger_entries",
+          "ledger_transactions",
+          "match_coin_allowances",
           "match_events",
           "match_players",
           "matches",

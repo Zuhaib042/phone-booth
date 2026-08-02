@@ -59,6 +59,10 @@ export interface ChatConfig {
   readonly userRateLimit: number;
 }
 
+export interface EconomyRuntimeConfig {
+  readonly fixtureValuesEnabled: boolean;
+}
+
 export interface DatastoreConfig {
   readonly databaseUrl: string;
   readonly valkeyUrl: string;
@@ -363,6 +367,25 @@ export function loadMatchmakingConfig(
       2_592_000,
     ),
   };
+}
+
+export function loadEconomyRuntimeConfig(
+  environment: Environment = process.env,
+): EconomyRuntimeConfig {
+  const { nodeEnvironment } = loadRuntimeConfig(environment);
+  const fixtureValuesEnabled =
+    readChoice(
+      environment,
+      "ECONOMY_FIXTURE_VALUES",
+      nodeEnvironment === "production" ? "disabled" : "enabled",
+      ["disabled", "enabled"] as const,
+    ) === "enabled";
+  if (fixtureValuesEnabled && nodeEnvironment === "production") {
+    throw new ConfigError(
+      "ECONOMY_FIXTURE_VALUES=enabled is forbidden when NODE_ENV=production",
+    );
+  }
+  return { fixtureValuesEnabled };
 }
 
 export function loadRealtimeConfig(

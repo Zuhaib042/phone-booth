@@ -15,6 +15,7 @@ import {
 } from "@project-booth/game-engine";
 import type { PoolClient } from "pg";
 
+import type { PostgresEconomyService } from "../economy/service.js";
 import { PostgresRealtimeEventRepository } from "../realtime/events.js";
 import { PostgresMatchRepository } from "./match-repository.js";
 import { PostgresOutboxRepository } from "./outbox.js";
@@ -225,6 +226,7 @@ export class MatchDeadlineHandler {
     private readonly outbox = new PostgresOutboxRepository(),
     private readonly scheduledJobs = new PostgresScheduledJobRepository(),
     private readonly realtimeEvents = new PostgresRealtimeEventRepository(),
+    private readonly economy?: PostgresEconomyService,
   ) {}
 
   public async handle(
@@ -253,6 +255,29 @@ export class MatchDeadlineHandler {
     const finalState = steps.at(-1)?.state;
     if (finalState === undefined || finalState.version === current.version) {
       return;
+    }
+
+    const roundNumber = current.completedRounds.length + 1;
+    if (this.economy !== undefined && current.phase === "negotiation") {
+      await this.economy.expirePendingWithinTransaction(
+        client,
+        current.matchId,
+        roundNumber,
+        occurredAt,
+        finalState.version,
+      );
+    }
+    if (this.economy !== undefined && current.phase === "voting") {
+      for (const missingPlayerId of finalState.missingNormalBallotPlayerIds) {
+        await this.economy.reverseIncomingWithinTransaction(
+          client,
+          current.matchId,
+          missingPlayerId,
+          roundNumber,
+          occurredAt,
+          finalState.version,
+        );
+      }
     }
 
     await this.matches.save(client, current.version, finalState, occurredAt);
