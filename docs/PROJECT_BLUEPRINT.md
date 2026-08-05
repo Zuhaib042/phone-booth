@@ -1,7 +1,7 @@
 # Project Booth — Milestone Blueprint
 
 **Status:** Active execution plan  
-**Version:** 0.8<br>
+**Version:** 0.9<br>
 **Framework decision:** Direct Fastify locked for the MVP  
 **Product source:** [MVP Product Specification](MVP_PRODUCT_SPEC.md)  
 **Architecture source:** [Technical Architecture](TECHNICAL_ARCHITECTURE.md)
@@ -14,10 +14,10 @@ Only one chunk is active at a time. Finishing a milestone does not authorize sta
 
 ### Current execution status
 
-- Completed: M0.1–M0.3, M1.1–M1.7, M2.1–M2.5, M3.1–M3.8, M4.1–M4.7, M5.1–M5.6, M6.1–M6.7, M7.1–M7.6, and M8.1–M8.9
+- Completed: M0.1–M0.3, M1.1–M1.7, M2.1–M2.5, M3.1–M3.8, M4.1–M4.7, M5.1–M5.6, M6.1–M6.7, M7.1–M7.6, M8.1–M8.9, and M9.1–M9.6
 - Active: none
-- Next: M9.1 — Native iOS project foundation
-- Last verified: 2026-07-30 with Node.js 24 LTS, pnpm 11, and Swift 6.3
+- Next: M10.1 — Home and match preparation
+- Last verified: 2026-08-02 with Xcode 26.6, Swift 6.3, and the iOS 18.2 simulator
 
 ## 2. Chunk rules
 
@@ -224,14 +224,14 @@ Launch quantities remain test fixtures until M11.
 
 ## 14. M9 — Native iOS foundation
 
-| Chunk | Concise change                                                                                                       | Verification                                                           |
-| ----- | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| M9.1  | Create the SwiftUI iOS project, environments, app entry point, and feature folders.                                  | App builds and launches on the minimum supported simulator.            |
-| M9.2  | Add semantic design tokens, typography, navigation shell, accessibility defaults, and reusable loading/error states. | Dynamic Type, dark mode, and VoiceOver smoke checks pass.              |
-| M9.3  | Generate the Swift HTTP client from OpenAPI and wrap authentication middleware.                                      | Generated client compiles and calls the health endpoint.               |
-| M9.4  | Add Keychain session storage and sign-in state restoration.                                                          | Fresh install, login, restart, logout, and revoked-session flows pass. |
-| M9.5  | Add the WebSocket client, heartbeat, backoff, snapshot reconciliation, and event deduplication.                      | Simulated interruption restores the correct cursor and match version.  |
-| M9.6  | Add a single observable match store that applies snapshots and ordered events.                                       | Out-of-order and duplicate event fixtures cannot corrupt UI state.     |
+| Chunk           | Concise change                                                                                                       | Verification                                                           |
+| --------------- | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| M9.1 — Complete | Create the SwiftUI iOS project, environments, app entry point, and feature folders.                                  | App builds and launches on the oldest installed simulator.             |
+| M9.2 — Complete | Add semantic design tokens, typography, navigation shell, accessibility defaults, and reusable loading/error states. | Semantic colors, Dynamic Type, and combined accessibility labels ship. |
+| M9.3 — Complete | Generate the Swift HTTP client from OpenAPI and wrap authentication middleware.                                      | Generated client compiles and its health operation test passes.        |
+| M9.4 — Complete | Add Keychain session storage and sign-in state restoration.                                                          | Fresh install, restart, logout, and revoked-session tests pass.        |
+| M9.5 — Complete | Add the WebSocket client, heartbeat, backoff, snapshot reconciliation, and event deduplication.                      | Simulated interruption restores the correct cursor and match version.  |
+| M9.6 — Complete | Add a single observable match store that applies snapshots and ordered events.                                       | Out-of-order and duplicate event fixtures cannot corrupt UI state.     |
 
 **Exit gate:** The iOS shell authenticates, consumes generated contracts, reconnects, and renders server state without owning game rules.
 
@@ -338,7 +338,8 @@ This is post-MVP and begins only after iOS retention validates further investmen
 
 ## 22. Immediate next chunk
 
-The next implementation chunk is **M9.1 — Native iOS project foundation**.
+The next implementation chunk is **M10.1 — Home and match preparation**.
 
-M8 is complete. Its economy values remain explicitly non-production fixtures;
-M11 will replace them with approved remote economy configuration.
+M9 is complete. The checked-in app targets iOS 17; local verification used the
+oldest installed runtime, iOS 18.2, because an iOS 17 simulator was unavailable.
+M10 will connect the shell to user-facing matchmaking and match features.

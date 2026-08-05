@@ -8,6 +8,9 @@ let package = Package(
         .macOS(.v13),
         .iOS(.v16),
     ],
+    products: [
+        .library(name: "BoothAPI", targets: ["BoothAPI"]),
+    ],
     dependencies: [
         .package(
             url: "https://github.com/apple/swift-openapi-generator",
@@ -20,7 +23,7 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "ContractClientSmoke",
+            name: "BoothAPI",
             dependencies: [
                 .product(
                     name: "OpenAPIRuntime",

@@ -1,5 +1,5 @@
 generate:
   - types
   - client
-accessModifier: internal
+accessModifier: public
 namingStrategy: idiomatic
