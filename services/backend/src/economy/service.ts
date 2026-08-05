@@ -50,6 +50,7 @@ export const M8_FIXTURE_ECONOMY_CONFIG: EconomyConfig = Object.freeze({
 });
 
 export interface WalletView {
+  readonly configuredMatchOutflowCap: number;
   readonly matchAllowance?: {
     readonly acceptedOutflow: number;
     readonly cap: number;
@@ -435,6 +436,7 @@ export class PostgresEconomyService {
           ? undefined
           : safeCoinNumber(allowance.outflow_cap);
       return {
+        configuredMatchOutflowCap: this.config.matchOutflowCap,
         ...(acceptedOutflow === undefined || cap === undefined
           ? {}
           : {

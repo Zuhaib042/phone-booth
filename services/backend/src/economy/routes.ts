@@ -83,6 +83,7 @@ const WALLET_SCHEMA = {
   additionalProperties: false,
   required: ["pending", "reserved", "restricted", "spendable"],
   properties: {
+    configuredMatchOutflowCap: { type: "integer", minimum: 1 },
     matchAllowance: {
       type: "object",
       additionalProperties: false,

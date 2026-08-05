@@ -14,10 +14,10 @@ Only one chunk is active at a time. Finishing a milestone does not authorize sta
 
 ### Current execution status
 
-- Completed: M0.1–M0.3, M1.1–M1.7, M2.1–M2.5, M3.1–M3.8, M4.1–M4.7, M5.1–M5.6, M6.1–M6.7, M7.1–M7.6, M8.1–M8.9, and M9.1–M9.6
+- Completed: M0.1–M0.3, M1.1–M1.7, M2.1–M2.5, M3.1–M3.8, M4.1–M4.7, M5.1–M5.6, M6.1–M6.7, M7.1–M7.6, M8.1–M8.9, M9.1–M9.6, and M10.1
 - Active: none
-- Next: M10.1 — Home and match preparation
-- Last verified: 2026-08-02 with Xcode 26.6, Swift 6.3, and the iOS 18.2 simulator
+- Next: M10.2 — Matchmaking and ready confirmation
+- Last verified: 2026-08-05 with Xcode 26.6, Swift 6.3, and the iOS 18.2 simulator
 
 ## 2. Chunk rules
 
@@ -237,17 +237,17 @@ Launch quantities remain test fixtures until M11.
 
 ## 15. M10 — Complete iOS match experience
 
-| Chunk | Concise change                                                                          | Verification                                                                  |
-| ----- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| M10.1 | Add home, profile summary, Play action, and match-preparation explanation.              | UI clearly distinguishes wallet balance from configured match allowance.      |
-| M10.2 | Add matchmaking, cancellation, ready confirmation, and failure recovery.                | UI tests cover timeout, cancellation, readiness, and match entry.             |
-| M10.3 | Add the booth shell with phase, server timer, roster, status, and red-phone navigation. | Background/foreground does not extend or reset deadlines.                     |
-| M10.4 | Add private thread UI, quick phrases, mute, report, and block entry points.             | Filtered and failed messages display safe actionable states.                  |
-| M10.5 | Add bribe composer, pending/accepted cards, and explicit betrayal disclosure.           | Sender and recipient confirmations match the product rules.                   |
-| M10.6 | Add secret vote, revision, deadline, runoff, and elimination views.                     | Other players' ballots never enter the client projection before completion.   |
-| M10.7 | Add eliminated spectator state, final pleas, jury vote, and return notification.        | Juror can leave and resume into the correct final state.                      |
-| M10.8 | Add dossier and basic results presentation.                                             | Honored, betrayed, reversed, declined, and expired offers render distinctly.  |
-| M10.9 | Run the six-client end-to-end match suite.                                              | Six simulators complete the full loop and produce one server-selected winner. |
+| Chunk            | Concise change                                                                          | Verification                                                                  |
+| ---------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| M10.1 — Complete | Add home, profile summary, Play action, and match-preparation explanation.              | UI clearly distinguishes wallet balance from configured match allowance.      |
+| M10.2            | Add matchmaking, cancellation, ready confirmation, and failure recovery.                | UI tests cover timeout, cancellation, readiness, and match entry.             |
+| M10.3            | Add the booth shell with phase, server timer, roster, status, and red-phone navigation. | Background/foreground does not extend or reset deadlines.                     |
+| M10.4            | Add private thread UI, quick phrases, mute, report, and block entry points.             | Filtered and failed messages display safe actionable states.                  |
+| M10.5            | Add bribe composer, pending/accepted cards, and explicit betrayal disclosure.           | Sender and recipient confirmations match the product rules.                   |
+| M10.6            | Add secret vote, revision, deadline, runoff, and elimination views.                     | Other players' ballots never enter the client projection before completion.   |
+| M10.7            | Add eliminated spectator state, final pleas, jury vote, and return notification.        | Juror can leave and resume into the correct final state.                      |
+| M10.8            | Add dossier and basic results presentation.                                             | Honored, betrayed, reversed, declined, and expired offers render distinctly.  |
+| M10.9            | Run the six-client end-to-end match suite.                                              | Six simulators complete the full loop and produce one server-selected winner. |
 
 **Exit gate:** A production-like match can be played end to end on iOS without StoreKit purchases.
 
@@ -338,8 +338,9 @@ This is post-MVP and begins only after iOS retention validates further investmen
 
 ## 22. Immediate next chunk
 
-The next implementation chunk is **M10.1 — Home and match preparation**.
+The next implementation chunk is **M10.2 — Matchmaking and ready confirmation**.
 
-M9 is complete. The checked-in app targets iOS 17; local verification used the
+M10.1 is complete. The checked-in app targets iOS 17; local verification used the
 oldest installed runtime, iOS 18.2, because an iOS 17 simulator was unavailable.
-M10 will connect the shell to user-facing matchmaking and match features.
+M10.2 will connect the Play preparation flow to matchmaking, cancellation,
+ready confirmation, and match entry.

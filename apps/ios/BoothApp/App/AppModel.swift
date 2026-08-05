@@ -7,6 +7,7 @@ final class AppModel {
     let session: SessionController
     let matchStore: MatchStore
     let api: BoothAPIClient
+    let home: HomeModel
 
     init(
         session: SessionController,
@@ -16,6 +17,7 @@ final class AppModel {
         self.session = session
         self.api = api
         self.matchStore = matchStore
+        home = HomeModel(loader: api)
     }
 
     static func live() -> AppModel {
@@ -34,5 +36,10 @@ final class AppModel {
 
     func restoreSession() async {
         await session.restore()
+    }
+
+    func logout() async {
+        home.reset()
+        await session.logout()
     }
 }

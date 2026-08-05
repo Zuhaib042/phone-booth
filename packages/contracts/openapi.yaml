@@ -1367,6 +1367,10 @@ components:
         - restricted
         - spendable
       properties:
+        configuredMatchOutflowCap:
+          type: integer
+          minimum: 1
+          description: Maximum outgoing Booth Coins configured for a new match.
         matchAllowance:
           type: object
           additionalProperties: false

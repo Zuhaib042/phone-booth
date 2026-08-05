@@ -419,6 +419,7 @@ test(
         randomUUID(),
       );
       assert.deepEqual(await service.wallet(players[2] as string), {
+        configuredMatchOutflowCap: 5_000,
         pending: 350,
         reserved: 0,
         restricted: false,
@@ -436,6 +437,7 @@ test(
       );
       assert.equal(settled, 350);
       assert.deepEqual(await service.wallet(players[2] as string), {
+        configuredMatchOutflowCap: 5_000,
         pending: 0,
         reserved: 0,
         restricted: false,
