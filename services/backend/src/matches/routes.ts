@@ -151,4 +151,170 @@ export function registerMatchRoutes(
         );
       }),
   );
+
+  api.post<{
+    Body: { readonly targetUserId: string };
+    Headers: { readonly "idempotency-key": string };
+    Params: { readonly matchId: string };
+  }>(
+    "/v1/matches/:matchId/runoff-ballot",
+    {
+      schema: {
+        headers: {
+          type: "object",
+          required: ["idempotency-key"],
+          properties: { "idempotency-key": { type: "string", format: "uuid" } },
+        },
+        params: {
+          type: "object",
+          additionalProperties: false,
+          required: ["matchId"],
+          properties: { matchId: { type: "string", format: "uuid" } },
+        },
+        body: {
+          type: "object",
+          additionalProperties: false,
+          required: ["targetUserId"],
+          properties: { targetUserId: { type: "string", format: "uuid" } },
+        },
+      },
+    },
+    (request, reply) =>
+      handle(request, reply, async () => {
+        const session = await authenticatedSession(request, identityService);
+        if (service === undefined) {
+          throw new IdentityError(
+            "identity_unavailable",
+            "Match services are not configured",
+            503,
+          );
+        }
+        return service.submitRunoffBallot(
+          session.userId,
+          request.params.matchId,
+          request.body.targetUserId,
+          request.headers["idempotency-key"],
+        );
+      }),
+  );
+
+  api.post<{
+    Body: { readonly text: string };
+    Headers: { readonly "idempotency-key": string };
+    Params: { readonly matchId: string };
+  }>(
+    "/v1/matches/:matchId/final-plea",
+    {
+      schema: {
+        headers: {
+          type: "object",
+          required: ["idempotency-key"],
+          properties: { "idempotency-key": { type: "string", format: "uuid" } },
+        },
+        params: {
+          type: "object",
+          additionalProperties: false,
+          required: ["matchId"],
+          properties: { matchId: { type: "string", format: "uuid" } },
+        },
+        body: {
+          type: "object",
+          additionalProperties: false,
+          required: ["text"],
+          properties: {
+            text: { type: "string", minLength: 1, maxLength: 240 },
+          },
+        },
+      },
+    },
+    (request, reply) =>
+      handle(request, reply, async () => {
+        const session = await authenticatedSession(request, identityService);
+        if (service === undefined) {
+          throw new IdentityError(
+            "identity_unavailable",
+            "Match services are not configured",
+            503,
+          );
+        }
+        return service.submitFinalPlea(
+          session.userId,
+          request.params.matchId,
+          request.body.text,
+          request.headers["idempotency-key"],
+        );
+      }),
+  );
+
+  api.post<{
+    Body: { readonly finalistUserId: string };
+    Headers: { readonly "idempotency-key": string };
+    Params: { readonly matchId: string };
+  }>(
+    "/v1/matches/:matchId/jury-ballot",
+    {
+      schema: {
+        headers: {
+          type: "object",
+          required: ["idempotency-key"],
+          properties: { "idempotency-key": { type: "string", format: "uuid" } },
+        },
+        params: {
+          type: "object",
+          additionalProperties: false,
+          required: ["matchId"],
+          properties: { matchId: { type: "string", format: "uuid" } },
+        },
+        body: {
+          type: "object",
+          additionalProperties: false,
+          required: ["finalistUserId"],
+          properties: { finalistUserId: { type: "string", format: "uuid" } },
+        },
+      },
+    },
+    (request, reply) =>
+      handle(request, reply, async () => {
+        const session = await authenticatedSession(request, identityService);
+        if (service === undefined) {
+          throw new IdentityError(
+            "identity_unavailable",
+            "Match services are not configured",
+            503,
+          );
+        }
+        return service.submitJuryBallot(
+          session.userId,
+          request.params.matchId,
+          request.body.finalistUserId,
+          request.headers["idempotency-key"],
+        );
+      }),
+  );
+
+  api.get<{ Params: { readonly matchId: string } }>(
+    "/v1/matches/:matchId/dossier",
+    {
+      schema: {
+        params: {
+          type: "object",
+          additionalProperties: false,
+          required: ["matchId"],
+          properties: { matchId: { type: "string", format: "uuid" } },
+        },
+      },
+    },
+    (request, reply) =>
+      handle(request, reply, async () => {
+        const session = await authenticatedSession(request, identityService);
+        if (service === undefined) {
+          throw new IdentityError(
+            "identity_unavailable",
+            "Match services are not configured",
+            503,
+          );
+        }
+        return service.dossier(session.userId, request.params.matchId);
+      }),
+  );
 }

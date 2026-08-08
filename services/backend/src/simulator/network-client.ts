@@ -5,6 +5,11 @@ import type {
   CreateTicketInput,
 } from "../matchmaking/service.js";
 import type { MatchReadyView } from "../matches/service.js";
+import type { BribeOfferView } from "../economy/service.js";
+import type {
+  ChatMessageAttemptView,
+  ChatThreadView,
+} from "../chat/service.js";
 import type {
   MatchSnapshot,
   RealtimeEventEnvelope,
@@ -55,6 +60,100 @@ export class NetworkedTestClient {
 
   public snapshot(matchId: string): Promise<MatchSnapshot> {
     return this.request(`/v1/matches/${matchId}/snapshot`);
+  }
+
+  public async chatThreads(
+    matchId: string,
+  ): Promise<readonly ChatThreadView[]> {
+    const response = await this.request<{
+      readonly threads: readonly ChatThreadView[];
+    }>(`/v1/matches/${matchId}/chat/threads`);
+    return response.threads;
+  }
+
+  public sendQuickPhrase(
+    matchId: string,
+    threadId: string,
+    quickPhraseKey: string,
+  ): Promise<ChatMessageAttemptView> {
+    return this.request(
+      `/v1/matches/${matchId}/chat/threads/${threadId}/messages`,
+      {
+        method: "POST",
+        body: JSON.stringify({ kind: "quick_phrase", quickPhraseKey }),
+        headers: { "Idempotency-Key": randomUUID() },
+      },
+    );
+  }
+
+  public createBribeOffer(
+    matchId: string,
+    input: {
+      readonly amount: number;
+      readonly recipientUserId: string;
+      readonly requestedTargetUserId: string;
+    },
+  ): Promise<BribeOfferView> {
+    return this.request(`/v1/matches/${matchId}/bribes`, {
+      method: "POST",
+      body: JSON.stringify(input),
+      headers: { "Idempotency-Key": randomUUID() },
+    });
+  }
+
+  public acceptBribeOffer(offerId: string): Promise<BribeOfferView> {
+    return this.request(`/v1/bribes/${offerId}/accept`, {
+      method: "POST",
+      headers: { "Idempotency-Key": randomUUID() },
+    });
+  }
+
+  public submitBallot(
+    matchId: string,
+    targetUserId: string,
+  ): Promise<{ readonly submitted: true }> {
+    return this.request(`/v1/matches/${matchId}/ballot`, {
+      method: "POST",
+      body: JSON.stringify({ targetUserId }),
+      headers: { "Idempotency-Key": randomUUID() },
+    });
+  }
+
+  public submitRunoffBallot(
+    matchId: string,
+    targetUserId: string,
+  ): Promise<{ readonly submitted: true }> {
+    return this.request(`/v1/matches/${matchId}/runoff-ballot`, {
+      method: "POST",
+      body: JSON.stringify({ targetUserId }),
+      headers: { "Idempotency-Key": randomUUID() },
+    });
+  }
+
+  public submitFinalPlea(
+    matchId: string,
+    text: string,
+  ): Promise<{ readonly submitted: true }> {
+    return this.request(`/v1/matches/${matchId}/final-plea`, {
+      method: "POST",
+      body: JSON.stringify({ text }),
+      headers: { "Idempotency-Key": randomUUID() },
+    });
+  }
+
+  public submitJuryBallot(
+    matchId: string,
+    finalistUserId: string,
+  ): Promise<{ readonly submitted: true }> {
+    return this.request(`/v1/matches/${matchId}/jury-ballot`, {
+      method: "POST",
+      body: JSON.stringify({ finalistUserId }),
+      headers: { "Idempotency-Key": randomUUID() },
+    });
+  }
+
+  public dossier<Result>(matchId: string): Promise<Result> {
+    return this.request(`/v1/matches/${matchId}/dossier`);
   }
 
   public async connect(baseUrl = this.baseUrl): Promise<void> {

@@ -94,6 +94,12 @@ export class PostgresMatchCommandExecutor {
     });
   }
 
+  public loadState(matchId: MatchId): Promise<MatchState | null> {
+    return this.transactions.run((client) =>
+      this.matches.load(client, matchId),
+    );
+  }
+
   public execute(input: ExecuteMatchCommandInput): Promise<StoredHttpResponse> {
     const identity: IdempotencyIdentity = {
       accountId: input.accountId,

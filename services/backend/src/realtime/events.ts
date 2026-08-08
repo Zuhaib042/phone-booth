@@ -1,12 +1,20 @@
 import { randomUUID } from "node:crypto";
 
-import type { UserId, UtcTimestamp } from "@project-booth/domain";
+import {
+  parseEntityId,
+  type MatchId,
+  type UserId,
+  type UtcTimestamp,
+} from "@project-booth/domain";
 import type { MatchState } from "@project-booth/game-engine";
 import type { PoolClient } from "pg";
 
 import type { JsonObject } from "../persistence/json.js";
 import { toJsonObject } from "../persistence/json.js";
-import type { MatchEventRecord } from "../persistence/match-repository.js";
+import {
+  type MatchEventRecord,
+  PostgresMatchRepository,
+} from "../persistence/match-repository.js";
 import type { NewOutboxEvent } from "../persistence/outbox.js";
 
 export type ClientAudience = "active" | "participants" | "player";
@@ -336,6 +344,13 @@ export interface MatchSnapshot {
   readonly matchVersion: number;
   readonly phase: MatchState["phase"];
   readonly phaseDeadline: UtcTimestamp | null;
+  readonly roundNumber: number;
+  readonly runoffUserIds: readonly string[];
+  readonly finalPleas: readonly {
+    readonly userId: string;
+    readonly text: string;
+  }[];
+  readonly winnerUserId: string | null;
   readonly roster: readonly {
     readonly avatarKey: string;
     readonly displayName: string;
@@ -348,7 +363,20 @@ export interface MatchSnapshot {
     readonly rulesetVersion: number;
   };
   readonly self: {
+    readonly finalPleaSubmitted: boolean;
+    readonly juryBallot: {
+      readonly finalistUserId: string;
+      readonly revision: number;
+    } | null;
+    readonly normalBallot: {
+      readonly targetUserId: string;
+      readonly revision: number;
+    } | null;
     readonly ready: boolean;
+    readonly runoffBallot: {
+      readonly targetUserId: string;
+      readonly revision: number;
+    } | null;
     readonly userId: string;
   };
 }
@@ -378,33 +406,20 @@ export class PostgresRealtimeQueryService {
     private readonly runTransaction: <Result>(
       action: (client: PoolClient) => Promise<Result>,
     ) => Promise<Result>,
+    private readonly matches = new PostgresMatchRepository(),
   ) {}
 
   public getSnapshot(userId: string, matchId: string): Promise<MatchSnapshot> {
     return this.runTransaction(async (client) => {
-      const match = await client.query<{
-        id: string;
-        phase: MatchState["phase"];
-        phase_deadline: Date | null;
-        ruleset_id: string;
-        ruleset_version: number;
-        version: string;
-      }>(
-        `
-          SELECT
-            id,
-            phase,
-            phase_deadline,
-            ruleset_id,
-            ruleset_version,
-            version
-          FROM matches
-          WHERE id = $1
-        `,
-        [matchId],
+      const parsedMatchId = parseEntityId("match", matchId);
+      if (!parsedMatchId.ok) {
+        throw new RealtimeNotFoundError();
+      }
+      const state = await this.matches.load(
+        client,
+        parsedMatchId.value as MatchId,
       );
-      const row = match.rows[0];
-      if (row === undefined) {
+      if (state === null) {
         throw new RealtimeNotFoundError();
       }
       const roster = await client.query<{
@@ -439,12 +454,20 @@ export class PostgresRealtimeQueryService {
       const cursor = Number(stream.rows[0]?.last_cursor ?? "0");
       return {
         lastRecipientCursor: cursor,
-        matchId: row.id,
-        matchVersion: Number(row.version),
-        phase: row.phase,
-        phaseDeadline:
-          (row.phase_deadline?.toISOString() as UtcTimestamp | undefined) ??
-          null,
+        matchId: state.matchId,
+        matchVersion: state.version,
+        phase: state.phase,
+        phaseDeadline: state.phaseDeadline,
+        roundNumber: state.completedRounds.length + 1,
+        runoffUserIds: state.runoffPlayerIds,
+        finalPleas:
+          state.phase === "jury_voting" || state.phase === "complete"
+            ? state.finalPleas.map((plea) => ({
+                userId: plea.playerId,
+                text: plea.text,
+              }))
+            : [],
+        winnerUserId: state.phase === "complete" ? state.winnerPlayerId : null,
         roster: roster.rows.map((entry) => ({
           avatarKey: entry.avatar_key ?? "avatar.deleted",
           displayName: entry.display_name ?? "Deleted Player",
@@ -453,10 +476,39 @@ export class PostgresRealtimeQueryService {
           userId: entry.player_id,
         })),
         ruleset: {
-          rulesetId: row.ruleset_id,
-          rulesetVersion: row.ruleset_version,
+          rulesetId: state.rulesetSnapshot.rulesetId,
+          rulesetVersion: state.rulesetSnapshot.rulesetVersion,
         },
-        self: { ready: self.ready, userId },
+        self: {
+          finalPleaSubmitted: state.finalPleas.some(
+            ({ playerId }) => playerId === userId,
+          ),
+          juryBallot:
+            state.juryBallots.flatMap((ballot) =>
+              ballot.jurorId === userId
+                ? [
+                    {
+                      finalistUserId: ballot.finalistId,
+                      revision: ballot.revision,
+                    },
+                  ]
+                : [],
+            )[0] ?? null,
+          normalBallot:
+            state.normalBallots.flatMap((ballot) =>
+              ballot.voterId === userId
+                ? [{ targetUserId: ballot.targetId, revision: ballot.revision }]
+                : [],
+            )[0] ?? null,
+          ready: self.ready,
+          runoffBallot:
+            state.runoffBallots.flatMap((ballot) =>
+              ballot.voterId === userId
+                ? [{ targetUserId: ballot.targetId, revision: ballot.revision }]
+                : [],
+            )[0] ?? null,
+          userId,
+        },
       };
     });
   }

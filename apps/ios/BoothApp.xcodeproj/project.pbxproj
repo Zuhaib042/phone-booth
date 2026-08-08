@@ -18,16 +18,25 @@
 			remoteGlobalIDString = A10000000000000000000020;
 			remoteInfo = BoothApp;
 		};
+		A10000000000000000000062 = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A10000000000000000000010 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A10000000000000000000020;
+			remoteInfo = BoothApp;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		A10000000000000000000004 /* BoothApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BoothApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000005 /* BoothAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BoothAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000000000000000000060 /* BoothAppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BoothAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		A10000000000000000000006 /* BoothApp */ = {isa = PBXFileSystemSynchronizedRootGroup; path = BoothApp; sourceTree = "<group>"; };
 		A10000000000000000000007 /* BoothAppTests */ = {isa = PBXFileSystemSynchronizedRootGroup; path = BoothAppTests; sourceTree = "<group>"; };
+		A10000000000000000000061 /* BoothAppUITests */ = {isa = PBXFileSystemSynchronizedRootGroup; path = BoothAppUITests; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -41,6 +50,7 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		A10000000000000000000009 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		A10000000000000000000063 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -49,6 +59,7 @@
 			children = (
 				A10000000000000000000006 /* BoothApp */,
 				A10000000000000000000007 /* BoothAppTests */,
+				A10000000000000000000061 /* BoothAppUITests */,
 				A10000000000000000000012 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -58,6 +69,7 @@
 			children = (
 				A10000000000000000000004 /* BoothApp.app */,
 				A10000000000000000000005 /* BoothAppTests.xctest */,
+				A10000000000000000000060 /* BoothAppUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -101,6 +113,22 @@
 			productReference = A10000000000000000000005 /* BoothAppTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		A10000000000000000000064 /* BoothAppUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A10000000000000000000068 /* Build configuration list for PBXNativeTarget "BoothAppUITests" */;
+			buildPhases = (
+				A10000000000000000000065 /* Sources */,
+				A10000000000000000000063 /* Frameworks */,
+				A10000000000000000000066 /* Resources */,
+			);
+			buildRules = ();
+			dependencies = (A10000000000000000000067 /* PBXTargetDependency */);
+			fileSystemSynchronizedGroups = (A10000000000000000000061 /* BoothAppUITests */);
+			name = BoothAppUITests;
+			productName = BoothAppUITests;
+			productReference = A10000000000000000000060 /* BoothAppUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -113,6 +141,7 @@
 				TargetAttributes = {
 					A10000000000000000000020 = {CreatedOnToolsVersion = 26.6; };
 					A10000000000000000000023 = {CreatedOnToolsVersion = 26.6; TestTargetID = A10000000000000000000020; };
+					A10000000000000000000064 = {CreatedOnToolsVersion = 26.6; TestTargetID = A10000000000000000000020; };
 				};
 			};
 			buildConfigurationList = A10000000000000000000042 /* Build configuration list for PBXProject "BoothApp" */;
@@ -129,22 +158,25 @@
 			productRefGroup = A10000000000000000000012 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
-			targets = (A10000000000000000000020 /* BoothApp */, A10000000000000000000023 /* BoothAppTests */);
+			targets = (A10000000000000000000020 /* BoothApp */, A10000000000000000000023 /* BoothAppTests */, A10000000000000000000064 /* BoothAppUITests */);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		A10000000000000000000022 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 		A10000000000000000000025 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		A10000000000000000000066 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		A10000000000000000000021 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 		A10000000000000000000024 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		A10000000000000000000065 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
 		A10000000000000000000026 /* PBXTargetDependency */ = {isa = PBXTargetDependency; target = A10000000000000000000020 /* BoothApp */; targetProxy = A10000000000000000000003; };
+		A10000000000000000000067 /* PBXTargetDependency */ = {isa = PBXTargetDependency; target = A10000000000000000000020 /* BoothApp */; targetProxy = A10000000000000000000062; };
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
@@ -154,12 +186,15 @@
 		A10000000000000000000053 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES; CODE_SIGN_ENTITLEMENTS = BoothApp/Resources/BoothApp.entitlements; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 1; DEVELOPMENT_TEAM = ""; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_CFBundleDisplayName = "Project Booth"; INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games"; INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES; INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES; INFOPLIST_KEY_UILaunchScreen_Generation = YES; INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait; MARKETING_VERSION = 0.1.0; PRODUCT_BUNDLE_IDENTIFIER = com.projectbooth.app; PRODUCT_NAME = "$(TARGET_NAME)"; SUPPORTED_PLATFORMS = "iphoneos iphonesimulator"; SUPPORTS_MACCATALYST = NO; SWIFT_EMIT_LOC_STRINGS = YES; TARGETED_DEVICE_FAMILY = 1; }; name = Release; };
 		A10000000000000000000054 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {BUNDLE_LOADER = "$(TEST_HOST)"; CODE_SIGN_STYLE = Automatic; GENERATE_INFOPLIST_FILE = YES; IPHONEOS_DEPLOYMENT_TARGET = 17.0; PRODUCT_BUNDLE_IDENTIFIER = com.projectbooth.app.tests; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 6.0; TARGETED_DEVICE_FAMILY = 1; TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BoothApp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/BoothApp"; }; name = Debug; };
 		A10000000000000000000055 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {BUNDLE_LOADER = "$(TEST_HOST)"; CODE_SIGN_STYLE = Automatic; GENERATE_INFOPLIST_FILE = YES; IPHONEOS_DEPLOYMENT_TARGET = 17.0; PRODUCT_BUNDLE_IDENTIFIER = com.projectbooth.app.tests; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 6.0; TARGETED_DEVICE_FAMILY = 1; TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BoothApp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/BoothApp"; }; name = Release; };
+		A10000000000000000000069 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; GENERATE_INFOPLIST_FILE = YES; IPHONEOS_DEPLOYMENT_TARGET = 17.0; PRODUCT_BUNDLE_IDENTIFIER = com.projectbooth.app.uitests; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 6.0; TARGETED_DEVICE_FAMILY = 1; TEST_TARGET_NAME = BoothApp; }; name = Debug; };
+		A1000000000000000000006A /* Release */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; GENERATE_INFOPLIST_FILE = YES; IPHONEOS_DEPLOYMENT_TARGET = 17.0; PRODUCT_BUNDLE_IDENTIFIER = com.projectbooth.app.uitests; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 6.0; TARGETED_DEVICE_FAMILY = 1; TEST_TARGET_NAME = BoothApp; }; name = Release; };
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
 		A10000000000000000000040 /* Build configuration list for PBXNativeTarget "BoothApp" */ = {isa = XCConfigurationList; buildConfigurations = (A10000000000000000000052 /* Debug */, A10000000000000000000053 /* Release */); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 		A10000000000000000000041 /* Build configuration list for PBXNativeTarget "BoothAppTests" */ = {isa = XCConfigurationList; buildConfigurations = (A10000000000000000000054 /* Debug */, A10000000000000000000055 /* Release */); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 		A10000000000000000000042 /* Build configuration list for PBXProject "BoothApp" */ = {isa = XCConfigurationList; buildConfigurations = (A10000000000000000000050 /* Debug */, A10000000000000000000051 /* Release */); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		A10000000000000000000068 /* Build configuration list for PBXNativeTarget "BoothAppUITests" */ = {isa = XCConfigurationList; buildConfigurations = (A10000000000000000000069 /* Debug */, A1000000000000000000006A /* Release */); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */

@@ -12,6 +12,9 @@
          <TestableReference skipped="NO">
             <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="A10000000000000000000023" BuildableName="BoothAppTests.xctest" BlueprintName="BoothAppTests" ReferencedContainer="container:BoothApp.xcodeproj"/>
          </TestableReference>
+         <TestableReference skipped="NO">
+            <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="A10000000000000000000064" BuildableName="BoothAppUITests.xctest" BlueprintName="BoothAppUITests" ReferencedContainer="container:BoothApp.xcodeproj"/>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction buildConfiguration="Debug" selectedDebuggerIdentifier="Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier="Xcode.DebuggerFoundation.Launcher.LLDB" launchStyle="0" useCustomWorkingDirectory="NO" ignoresPersistentStateOnLaunch="NO" debugDocumentVersioning="YES" debugServiceExtension="internal" allowLocationSimulation="YES">

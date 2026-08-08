@@ -498,6 +498,156 @@ paths:
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
 
+  /v1/matches/{matchId}/runoff-ballot:
+    parameters:
+      - $ref: "#/components/parameters/MatchId"
+    post:
+      tags:
+        - Matches
+      summary: Submit or revise a secret runoff ballot
+      operationId: submitRunoffBallot
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - targetUserId
+              properties:
+                targetUserId:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          description: Private runoff ballot acknowledgement.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NormalBallotAcknowledgement"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /v1/matches/{matchId}/final-plea:
+    parameters:
+      - $ref: "#/components/parameters/MatchId"
+    post:
+      tags:
+        - Matches
+      summary: Submit or revise a finalist plea
+      operationId: submitFinalPlea
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - text
+              properties:
+                text:
+                  type: string
+                  minLength: 1
+                  maxLength: 240
+      responses:
+        "200":
+          description: Private plea acknowledgement.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FinalPleaAcknowledgement"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /v1/matches/{matchId}/jury-ballot:
+    parameters:
+      - $ref: "#/components/parameters/MatchId"
+    post:
+      tags:
+        - Matches
+      summary: Submit or revise a secret jury ballot
+      operationId: submitJuryBallot
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - finalistUserId
+              properties:
+                finalistUserId:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          description: Private jury ballot acknowledgement.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NormalBallotAcknowledgement"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /v1/matches/{matchId}/dossier:
+    parameters:
+      - $ref: "#/components/parameters/MatchId"
+    get:
+      tags:
+        - Matches
+      summary: Get the completed match dossier
+      operationId: getMatchDossier
+      responses:
+        "200":
+          description: Participant-only completed match facts.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchDossier"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
   /v1/matches/{matchId}/bribes:
     parameters:
       - $ref: "#/components/parameters/MatchId"
@@ -1358,6 +1508,24 @@ components:
           type: boolean
           const: true
 
+    FinalPleaAcknowledgement:
+      type: object
+      additionalProperties: false
+      required:
+        - matchId
+        - matchVersion
+        - submitted
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        matchVersion:
+          type: integer
+          minimum: 1
+        submitted:
+          type: boolean
+          const: true
+
     CoinWallet:
       type: object
       additionalProperties: false
@@ -1532,6 +1700,23 @@ components:
             - string
             - "null"
           format: date-time
+        roundNumber:
+          type: integer
+          minimum: 1
+        runoffUserIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        finalPleas:
+          type: array
+          items:
+            $ref: "#/components/schemas/FinalPlea"
+        winnerUserId:
+          type:
+            - string
+            - "null"
+          format: uuid
         roster:
           type: array
           minItems: 1
@@ -1557,11 +1742,210 @@ components:
             - ready
             - userId
           properties:
+            finalPleaSubmitted:
+              type: boolean
+            juryBallot:
+              oneOf:
+                - $ref: "#/components/schemas/PrivateJuryBallot"
+                - type: "null"
+            normalBallot:
+              oneOf:
+                - $ref: "#/components/schemas/PrivateBallot"
+                - type: "null"
             ready:
               type: boolean
+            runoffBallot:
+              oneOf:
+                - $ref: "#/components/schemas/PrivateBallot"
+                - type: "null"
             userId:
               type: string
               format: uuid
+
+    PrivateBallot:
+      type: object
+      additionalProperties: false
+      required:
+        - revision
+        - targetUserId
+      properties:
+        revision:
+          type: integer
+          minimum: 1
+        targetUserId:
+          type: string
+          format: uuid
+
+    PrivateJuryBallot:
+      type: object
+      additionalProperties: false
+      required:
+        - finalistUserId
+        - revision
+      properties:
+        finalistUserId:
+          type: string
+          format: uuid
+        revision:
+          type: integer
+          minimum: 1
+
+    FinalPlea:
+      type: object
+      additionalProperties: false
+      required:
+        - text
+        - userId
+      properties:
+        text:
+          type: string
+          minLength: 1
+          maxLength: 240
+        userId:
+          type: string
+          format: uuid
+
+    DossierBallot:
+      type: object
+      additionalProperties: false
+      required:
+        - automatic
+        - targetUserId
+        - voterUserId
+      properties:
+        automatic:
+          type: boolean
+        targetUserId:
+          type: string
+          format: uuid
+        voterUserId:
+          type: string
+          format: uuid
+
+    DossierRound:
+      type: object
+      additionalProperties: false
+      required:
+        - automaticBallots
+        - eliminatedUserId
+        - normalBallots
+        - roundNumber
+      properties:
+        automaticBallots:
+          type: array
+          items:
+            $ref: "#/components/schemas/DossierBallot"
+        eliminatedUserId:
+          type: string
+          format: uuid
+        normalBallots:
+          type: array
+          items:
+            $ref: "#/components/schemas/DossierBallot"
+        roundNumber:
+          type: integer
+          minimum: 1
+
+    DossierJuryBallot:
+      type: object
+      additionalProperties: false
+      required:
+        - finalistUserId
+        - jurorUserId
+      properties:
+        finalistUserId:
+          type: string
+          format: uuid
+        jurorUserId:
+          type: string
+          format: uuid
+
+    DossierDeal:
+      type: object
+      additionalProperties: false
+      required:
+        - amount
+        - offerId
+        - outcome
+        - promisedTargetPlayerId
+        - recipientPlayerId
+        - roundNumber
+        - senderPlayerId
+      properties:
+        amount:
+          type: integer
+          minimum: 1
+        offerId:
+          type: string
+          format: uuid
+        outcome:
+          type: string
+          enum:
+            - honored
+            - betrayed
+            - reversed
+            - declined
+            - expired
+        promisedTargetPlayerId:
+          type: string
+          format: uuid
+        recipientPlayerId:
+          type: string
+          format: uuid
+        roundNumber:
+          type: integer
+          minimum: 1
+        senderPlayerId:
+          type: string
+          format: uuid
+
+    MatchDossier:
+      type: object
+      additionalProperties: false
+      required:
+        - deals
+        - eliminationOrder
+        - finalPleas
+        - juryBallots
+        - juryResolutionMethod
+        - matchId
+        - rounds
+        - winnerUserId
+      properties:
+        deals:
+          type: array
+          items:
+            $ref: "#/components/schemas/DossierDeal"
+        eliminationOrder:
+          type: array
+          items:
+            type: string
+            format: uuid
+        finalPleas:
+          type: array
+          items:
+            $ref: "#/components/schemas/FinalPlea"
+        juryBallots:
+          type: array
+          items:
+            $ref: "#/components/schemas/DossierJuryBallot"
+        juryResolutionMethod:
+          type: string
+          enum:
+            - jury_vote
+            - cumulative_votes
+            - missed_ballots
+            - random_draw
+        matchId:
+          type: string
+          format: uuid
+        rounds:
+          type: array
+          items:
+            $ref: "#/components/schemas/DossierRound"
+        winnerUserId:
+          type: string
+          format: uuid
 
     QuickPhrase:
       type: object
